@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(NMPC_PAPERS VERSION 0.1.0)
+project(NMPC_PAPERS VERSION 0.1.0 LANGUAGES C CXX)
 
 set(ACADOS_INSTALL_DIR ${PROJECT_SOURCE_DIR}/build/acados)
+set(ACADOS_WITH_QPOASES ON)
+set(ACADOS_PYTHON ON)
+set(ACADOS_EXAMPLES ON)
+set(BUILD_SHARED_LIBS ON)
 
-
-add_subdirectory( ${PROJECT_SOURCE_DIR}/3rdParty)
+add_subdirectory( ${PROJECT_SOURCE_DIR}/3rdParty )
