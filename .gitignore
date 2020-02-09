@@ -1,6 +1,8 @@
 #Build DIR
 build/
-
+.idea/
+*.user
+*.json
 # Prerequisites
 *.d
 

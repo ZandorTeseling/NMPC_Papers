@@ -1,4 +1,4 @@
-#Nonlinear Model Predictive Control of a Human-sized Quadrotor
+# Nonlinear Model Predictive Control of a Human-sized Quadrotor
 
 **cite**: contains my attempt at implementing NMPC from [paper](https://www.researchgate.net/publication/323616835_Nonlinear_Model_Predictive_Control_of_a_Human-Sized_Quadrotor).
  
