@@ -1,8 +1,15 @@
-#Build DIR
+# Build DIR
 build/
+
+# Random 
 .idea/
 *.user
 *.json
+*.vscode
+
+c_generated_code
+__pycache__/
+
 # Prerequisites
 *.d
 
