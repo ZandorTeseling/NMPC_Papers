@@ -60,7 +60,7 @@ def export_ocp_solver(model, N, h, Q, R, Fmax=80):
     # set cost
     ocp.cost.cost_type = 'NONLINEAR_LS'
     ocp.cost.cost_type_e = 'NONLINEAR_LS'
-
+    #TODO Figure out why this is R then Q.....
     ocp.cost.W = scipy.linalg.block_diag(R, Q)
 
     ocp.cost.W_e = Q
@@ -89,9 +89,9 @@ def export_ocp_solver(model, N, h, Q, R, Fmax=80):
 
     # set prediction horizon
     ocp.solver_options.tf = Tf
-    ocp.solver_options.nlp_solver_type = 'SQP'
-    # ocp.solver_options.nlp_solver_type = 'SQP_RTI'
-    ocp.solver_options.nlp_solver_max_iter = 200
+    #ocp.solver_options.nlp_solver_type = 'SQP'
+    ocp.solver_options.nlp_solver_type = 'SQP_RTI'
+    #ocp.solver_options.nlp_solver_max_iter = 200
 
     acados_solver = AcadosOcpSolver(ocp, json_file = 'acados_ocp.json')
 

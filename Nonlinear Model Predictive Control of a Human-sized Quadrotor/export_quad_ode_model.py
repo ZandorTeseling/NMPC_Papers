@@ -36,46 +36,62 @@ from casadi import SX, vertcat, sin, cos
 
 def export_pendulum_ode_model():
 
-    model_name = 'pendulum_ode'
+    model_name = 'quad_ode'
 
-    # constants
-    M = 1.
-    m = 0.1
-    g = 9.81
-    l = 0.8
 
     # set up states & controls
-    x1      = SX.sym('x1')
-    theta   = SX.sym('theta')
-    v1      = SX.sym('v1')
-    dtheta  = SX.sym('dtheta')
+    q0      = SX.sym('q0')
+    q1      = SX.sym('q1')
+    q2      = SX.sym('q2')
+    q3      = SX.sym('q3')
+    omegax  = SX.sym('omegax')
+    omegay  = SX.sym('omegay')
+    omegaz  = SX.sym('omegaz')
+
     
-    x = vertcat(x1, theta, v1, dtheta)
+    x = vertcat(q0,q1,q2,q3,omegax,omegay,omegaz)
 
     # controls
-    F = SX.sym('F')
-    u = vertcat(F)
+    w1 = SX.sym('w1')
+    w2 = SX.sym('w2')
+    w3 = SX.sym('w3')
+    w4 = SX.sym('w4')
+    u = vertcat(w1, w2, w3, w4)
     
     # xdot
-    x1_dot      = SX.sym('x1_dot')
-    theta_dot   = SX.sym('theta_dot')
-    v1_dot      = SX.sym('v1_dot')
-    dtheta_dot  = SX.sym('dtheta_dot')
+    q0_dot      = SX.sym('q0_dot')
+    q1_dot      = SX.sym('q1_dot')
+    q2_dot      = SX.sym('q2_dot')
+    q3_dot      = SX.sym('q3_dot')
+    omegax_dot  = SX.sym('omegax_dot')
+    omegay_dot  = SX.sym('omegay_dot')
+    omegaz_dot  = SX.sym('omegaz_dot')
 
-    xdot = vertcat(x1_dot, theta_dot, v1_dot, dtheta_dot)
+    xdot = vertcat(q0_dot,q1_dot,q2_dot,q3_dot,omegax_dot,omegay_dot,omegaz_dot)
 
     # algebraic variables
     # z = None
 
     # parameters
-    p = []
+    # set up parameters
+    rho = SX.sym('rho') # air density
+    A = SX.sym('A')     # propeller area
+    Cl = SX.sym('Cl')   # lift coefficient
+    Cd = SX.sym('Cd')   # drag coefficient
+    m = SX.sym('m')     # mass of quad
+    g = SX.sym('g')     # gravity
+    J1 = SX.sym('J1')   # mom inertia
+    J2 = SX.sym('J2')   # mom inertia
+    J3 = SX.sym('J3')   # mom inertia
+
+    #TODO Skew matrix for inertia J matrix.
+
+    p = vertcat(rho, A, Cl, Cd, m, g, J1, J2, J3)
     
     # dynamics     
-    denominator = M + m - m*cos(theta)*cos(theta)
-    f_expl = vertcat(v1,
-                     dtheta,
-                     (-m*l*sin(theta)*dtheta*dtheta + m*g*cos(theta)*sin(theta)+F)/denominator,
-                     (-m*l*cos(theta)*sin(theta)*dtheta*dtheta + F*cos(theta)+(M+m)*g*sin(theta))/(l*denominator)
+    f_expl = vertcat(
+        #TODO map angular velocity to quaternion dynamics. Use the approximation?
+        #TODO normal dynamics for domega
                      )
 
     f_impl = xdot - f_expl
