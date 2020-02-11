@@ -32,9 +32,9 @@
 #
 
 from acados_template import AcadosModel
-from casadi import SX, vertcat, sin, cos
+from casadi import *
 
-def export_pendulum_ode_model():
+def export_quad_ode_model():
 
     model_name = 'quad_ode'
 
@@ -83,11 +83,23 @@ def export_pendulum_ode_model():
     J1 = SX.sym('J1')   # mom inertia
     J2 = SX.sym('J2')   # mom inertia
     J3 = SX.sym('J3')   # mom inertia
+    J = diag(vertcat(J1,J2,J3))
 
-    #TODO Skew matrix for inertia J matrix.
+    # This comes from ref[6] pg 449.
+    # dq = 1/2 * G(q)' * Ω
+    S = SX(3,4)
+    S[:,0] = vertcat(-q1,-q2,-q3)
+    S[:,1:4] = q0*np.eye(3) - skew(vertcat(q1,q2,q3))
+
+    OMG = vertcat(omegax,omegay,omegaz)
+
+    print(cross(OMG, mtimes(J,OMG)).shape)
+
+
+
 
     p = vertcat(rho, A, Cl, Cd, m, g, J1, J2, J3)
-    
+    print(p.shape)
     # dynamics     
     f_expl = vertcat(
         #TODO map angular velocity to quaternion dynamics. Use the approximation?

@@ -32,8 +32,8 @@
 #
 
 from acados_template import AcadosOcp, AcadosOcpSolver, AcadosSimSolver
-from export_pendulum_ode_model import export_pendulum_ode_model
-from utils import plot_pendulum
+from export_quad_ode_model import export_quad_ode_model
+from utils import plot_quad
 import numpy as np
 import scipy.linalg
 
@@ -41,7 +41,7 @@ import scipy.linalg
 ocp = AcadosOcp()
 
 # set model
-model = export_pendulum_ode_model()
+model = export_quad_ode_model()
 ocp.model = model
 
 Tf = 1.0
