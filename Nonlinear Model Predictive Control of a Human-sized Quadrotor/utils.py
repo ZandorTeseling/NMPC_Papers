@@ -71,22 +71,34 @@ def plot_quad(h, u_max, U, X_true, X_est=None, Y_measured=None, latexify=True):
     Tf = N_sim*h
     t = np.linspace(0.0, Tf, N_sim)
 
+    control_labels = ['$w_1$',
+                      '$w_2$',
+                      '$w_3$',
+                      '$w_4$']
+
     if WITH_ESTIMATION:
         N_mhe = N_sim - X_est.shape[0]
         t_mhe = np.linspace(N_mhe, Tf, N_sim)
-
-    plt.subplot(nx+1, 1, 1)
-    plt.step(t[:U.shape[0]], U, color='r')
-    plt.title('closed-loop simulation')
+    plt.figure(1)
+    plt.subplot(1, 1, 1)
+    plt.step(t[:U.shape[0]], U,'o-')
+    plt.title('closed-loop control inputs')
     plt.ylabel('$u$')
     plt.xlabel('$t$')
     plt.hlines(u_max, t[0], t[-2], linestyles='dashed', alpha=0.7)
     plt.hlines(-u_max, t[0], t[-2], linestyles='dashed', alpha=0.7 )
     plt.ylim([1.2*u_max, -1.2*u_max])
     plt.grid()
+    plt.legend(control_labels)
 
-    states_lables = ['$x$', r'$\theta$', '$v$', r'$\dot{\theta}$']
-
+    states_lables = ['$q_0$',
+                     '$q_1$',
+                     '$q_2$',
+                     '$q_3$',
+                     '$\dot{\omega_1}$',
+                     '$\dot{\omega_2}$',
+                     '$\dot{\omega_3}$']
+    plt.figure(2)
     for i in range(nx):
         plt.subplot(nx+1, 1, i+2)
         plt.plot(t, X_true[:,i], label='true')

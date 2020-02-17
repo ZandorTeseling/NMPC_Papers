@@ -91,19 +91,21 @@ def export_quad_ode_model():
     S[:,0] = vertcat(-q1,-q2,-q3)
     S[:,1:4] = q0*np.eye(3) - skew(vertcat(q1,q2,q3))
 
+    #Define angular velocity vector
     OMG = vertcat(omegax,omegay,omegaz)
 
-    print(cross(OMG, mtimes(J,OMG)).shape)
-
-
-
-
     p = vertcat(rho, A, Cl, Cd, m, g, J1, J2, J3)
-    print(p.shape)
-    # dynamics     
+
+    #Define torque applied to the system
+    T = SX(3,1)
+    T[0, 0] = 0.5 * A * Cl * rho *( w2*w2 - w4*w4)
+    T[1, 0] = 0.5 * A * Cl * rho * (w1 * w1 - w3 * w3)
+    T[2, 0] = 0.5 * A * Cl * rho * (w1 * w1 - w2 * w2 + w3*w3 - w4*w4)
+
+    # dynamics
     f_expl = vertcat(
-        #TODO map angular velocity to quaternion dynamics. Use the approximation?
-        #TODO normal dynamics for domega
+                        0.5*mtimes(transpose(S),OMG),
+                        mtimes(inv(J),( T - cross(OMG,mtimes(J,OMG))))
                      )
 
     f_impl = xdot - f_expl
