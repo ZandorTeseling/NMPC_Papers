@@ -33,7 +33,7 @@
 
 from acados_template import AcadosSim, AcadosSimSolver
 from export_quad_ode_model import export_quad_ode_model
-from utils import plot_quad
+from utils import *
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -50,6 +50,8 @@ dt = 0.01
 nx = model.x.size()[0]
 nu = model.u.size()[0]
 
+print("StateSize:" ,nx)
+print("ControlSize:" ,nu)
 
 # set simulation time
 sim.solver_options.T = dt
@@ -92,7 +94,9 @@ for i in range(Nsim):
     # set initial state
     acados_integrator.set("x", x0)
     # set control inputs
-    u0 = 0.25 * uMax * np.random.randn(4)
+    # u0 = 0.25 * uMax * np.random.randn(4)
+    u0 = np.array([10,0,10,0]) #Positive yaw.
+    # u0 = np.array([0,10,0,10])  # Negative yaw.
     acados_integrator.set("u", u0)
     # solve
     status = acados_integrator.solve()
@@ -105,5 +109,23 @@ for i in range(Nsim):
     if status != 0:
         raise Exception('acados returned status {}. Exiting.'.format(status))
 
+
+q = np.zeros((2, 4))
+q[0, 0] = 0.479
+q[0, 1] = 0
+q[0, 2] = 0
+q[0, 3] = 0.878
+q[1, 0] = 1
+resEul = QuattoYPR(q)
+print(resEul)
+
+ypr = np.zeros((2, 3))
+ypr[0, 0] = -np.pi
+ypr[0, 1] = 0
+ypr[0, 2] = 0
+resQuat = YPRtoQuat(ypr)
+print(resQuat)
 # plot results
 plot_quad(dt, uMax, simU, simX)
+
+
