@@ -59,37 +59,68 @@ ocp.dims.nbu = nu
 ocp.dims.nu  = nu
 ocp.dims.N   = N
 
-# set cost module
-ocp.cost.cost_type = 'LINEAR_LS'
-ocp.cost.cost_type_e = 'LINEAR_LS'
 
-Q = 2*np.diag([1e3, 1e3, 1e-2, 1e-2])
-R = 2*np.diag([1e-2])
+
+#Cost defined in paper
+#           ---                    ---
+#           | roll(x)   - roll_ref    |
+#           | pitch(x)  - pitch_ref   |
+#l(x,u,z) = | yaw(x)    - yaw_ref     |
+#           | x         - x_ref       |
+#           | u         - u_ref       |
+#           ---                    ---
+#        ---                    ---
+#        | roll(x)   - roll_ref    |
+#        | pitch(x)  - pitch_ref   |
+#m(x) = | yaw(x)    - yaw_ref     |
+#        | x         - x_ref       |
+#        | u         - u_ref       |
+#        ---                    ---
+
+# set cost module
+ocp.cost.cost_type = 'NONLINEAR_LS'
+ocp.cost.cost_type_e = 'NONLINEAR_LS'
+# TODO This needs to change as the mapping from quaternion states to rpy definitely isn't linear
+# Reading the problem_formulation_ocp_mex
+# ocp.cost.cost_expr_y = model.cost_expr_y
+# ocp.cost.cost_expr_y_e = model.cost_expr_y_e
+
+
+
+# From the paper
+# W = [5*10^2*I_3, 1*10^-3 I_11]
+# Wn = [5*10^2*I_3, 1*q0^-3 * I_7]
+AttCost = 5 * (10**2) * np.ones(3)
+StateCost = 1 * (10**-3) * np.ones(nx)
+Q = np.diag(np.concatenate((AttCost, StateCost)))
+
+ContCost = 1 * (10**-3) * np.ones(nu)
+R = np.diag(ContCost)
 
 ocp.cost.W = scipy.linalg.block_diag(Q, R)
 
 ocp.cost.W_e = Q
-
-ocp.cost.Vx = np.zeros((ny, nx))
-ocp.cost.Vx[:nx,:nx] = np.eye(nx)
-
-Vu = np.zeros((ny, nu))
-Vu[4,0] = 1.0
-ocp.cost.Vu = Vu
-
-ocp.cost.Vx_e = np.eye(nx)
+print(np.diag(Q))
 
 ocp.cost.yref  = np.zeros((ny, ))
 ocp.cost.yref_e = np.zeros((ny_e, ))
 
+# init conditions
+x0 = np.array([1.0,
+               0.0,
+               0.0,
+               0.0,
+               0.0,
+               0.0,
+               0.0])
+
 # set constraints
-Fmax = 80
-x0 = np.array([0.0, np.pi, 0.0, 0.0])
+uMax = 39.99
 ocp.constraints.constr_type = 'BGH'
-ocp.constraints.lbu = np.array([-Fmax])
-ocp.constraints.ubu = np.array([+Fmax])
+ocp.constraints.lbu = np.array([-uMax, -uMax, -uMax, -uMax])
+ocp.constraints.ubu = np.array([uMax, uMax, uMax, uMax])
 ocp.constraints.x0 = x0
-ocp.constraints.idxbu = np.array([0])
+ocp.constraints.idxbu = np.array([0, 1, 2, 3])
 
 ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM' # FULL_CONDENSING_QPOASES
 ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
@@ -135,4 +166,4 @@ for i in range(N):
     simX[i+1,:] = xcurrent
 
 # plot results
-plot_pendulum(Tf/N, Fmax, simU, simX)
+plot_quad(dt, uMax, simU, simX)

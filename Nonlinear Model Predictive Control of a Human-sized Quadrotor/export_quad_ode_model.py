@@ -121,5 +121,11 @@ def export_quad_ode_model():
     model.p = p
     model.name = model_name
 
-    return model 
+    #add the nonlinear cost.
+    # TODO Actually implement these expressions from the paper.
+    model.cost_y_expr = np.ones((7+4+3,1))  #: CasADi expression for nonlinear least squares
+    model.cost_y_expr_e = np.ones((7+3,1))  #: CasADi expression for nonlinear least squares, terminal
+
+
+    return model
 
