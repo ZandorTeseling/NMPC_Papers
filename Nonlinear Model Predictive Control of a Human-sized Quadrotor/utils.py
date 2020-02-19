@@ -37,7 +37,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def QuattoYPR(q):
+def QuattoRPY(q):
     """
     Params:
     In:
@@ -45,9 +45,11 @@ def QuattoYPR(q):
     Out
         rpy: N x 3
     """
+
+
+    if q.ndim == 1:
+        q = q.reshape((1, 4))
     N = q.shape[0]
-    if(N == 0):
-        q = np.reshape((1, 4))
     rpy = np.zeros((N, 3))
 
     for i in range(N):
@@ -72,26 +74,33 @@ def QuattoYPR(q):
 
     return rpy
 
-def YPRtoQuat(ypr):
+#Convertion for the ZYX sequence of rotation. RPY--from right to left--
+# xa vector in basis {a}
+# xb vector in basis {b}
+# Rab = dcm of basis {b} w.r.t basis{a}
+# xa = R_z(\psi)R_y(\theta)R_X(\phi) xb
+#
+def YPRtoQuat(rpy):
     """
     Params:
     In:
-        ypr: N x 3
+        rpy: N x 3
     Out
         q: N x 4
     """
-    N = ypr.shape[0]
-    if N == 0:
-        ypr = np.reshape((1, 3))
+
+    if rpy.ndim == 1:
+        rpy = rpy.reshape((1, 3))
+    N = rpy.shape[0]
     q = np.zeros((N, 4))
 
     for i in range(N):
-        cy = np.cos(ypr[i, 0] * 0.5)
-        sy = np.sin(ypr[i, 0] * 0.5)
-        cp = np.cos(ypr[i, 1] * 0.5)
-        sp = np.sin(ypr[i, 1] * 0.5)
-        cr = np.cos(ypr[i, 2] * 0.5)
-        sr = np.sin(ypr[i, 2] * 0.5)
+        cy = np.cos(rpy[i, 2] * 0.5)
+        sy = np.sin(rpy[i, 2] * 0.5)
+        cp = np.cos(rpy[i, 1] * 0.5)
+        sp = np.sin(rpy[i, 1] * 0.5)
+        cr = np.cos(rpy[i, 0] * 0.5)
+        sr = np.sin(rpy[i, 0] * 0.5)
 
         #Quaternion
         q[i, 0] = cy * cp * cr + sy * sp * sr
@@ -181,7 +190,7 @@ def plot_quad(h, u_max, U, X_true, X_est=None, Y_measured=None, latexify=True):
     ########################################################
     #Remapping x = [q0,q1,q2,q3,omega_x,omega_y,omega_z] -> [phi,theta,psi,omega_x,omega_y,omega_z]
     X_remapped = np.zeros((N_sim,nx-1))
-    X_remapped[:, 0:3] = QuattoYPR(X_true[:,0:4])
+    X_remapped[:, 0:3] = QuattoRPY(X_true[:,0:4])
     X_remapped[:, 3:nx-1] = X_true[:, 4:nx]
     # X_remapped[:, 4] = X_true[:, 5]
     # X_remapped[:, 5] = X_true[:, 6]

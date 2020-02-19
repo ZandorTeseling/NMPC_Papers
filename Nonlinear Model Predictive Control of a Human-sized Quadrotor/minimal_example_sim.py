@@ -45,7 +45,7 @@ model = export_quad_ode_model()
 # set model_name 
 sim.model = model
 
-Tf = 1
+Tf = 2.5
 dt = 0.01
 nx = model.x.size()[0]
 nu = model.u.size()[0]
@@ -71,8 +71,8 @@ simX = np.ndarray((Nsim+1, nx))
 simU = np.ndarray((Nsim, nu))
 
 x0 = np.zeros((nx))
-x0[0] = 1
-#TODO Set up correct initialisation for quaternions based of a rpy inital condition!!
+x0[0:4] = YPRtoQuat(np.array([0, 0, 0]))
+
 u0 = np.zeros((nu))
 
 simX[0,:] = x0
@@ -95,8 +95,15 @@ for i in range(Nsim):
     acados_integrator.set("x", x0)
     # set control inputs
     # u0 = 0.25 * uMax * np.random.randn(4)
-    u0 = np.array([10,0,10,0]) #Positive yaw.
-    # u0 = np.array([0,10,0,10])  # Negative yaw.
+    #u0 = np.array([10,0,10,0]) #Positive yaw.
+    #u0 = np.array([0,10,0,10])  # Negative yaw.
+
+    # u0 = np.array([10, np.sqrt(10*10*0.5), 0, np.sqrt(10*10*0.5)]) #Positive pitch.
+    u0 = np.array([0, np.sqrt(10 * 10 * 0.5), 10, np.sqrt(10 * 10 * 0.5)])  # Negative pitch.
+
+    # u0 = np.array([np.sqrt(10*10*0.5), 10, np.sqrt(10*10*0.5), 0]) #Positive roll.
+    # u0 = np.array([np.sqrt(10 * 10 * 0.5), 0, np.sqrt(10 * 10 * 0.5),10])  # Negative roll.
+
     acados_integrator.set("u", u0)
     # solve
     status = acados_integrator.solve()
@@ -116,14 +123,14 @@ q[0, 1] = 0
 q[0, 2] = 0
 q[0, 3] = 0.878
 q[1, 0] = 1
-resEul = QuattoYPR(q)
+resEul = QuattoRPY(q)
 print(resEul)
 
-ypr = np.zeros((2, 3))
-ypr[0, 0] = -np.pi
-ypr[0, 1] = 0
-ypr[0, 2] = 0
-resQuat = YPRtoQuat(ypr)
+rpy = np.zeros((2, 3))
+rpy[0, 0] = -np.pi
+rpy[0, 1] = 0
+rpy[0, 2] = 0
+resQuat = YPRtoQuat(rpy)
 print(resQuat)
 # plot results
 plot_quad(dt, uMax, simU, simX)
