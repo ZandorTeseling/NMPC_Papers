@@ -49,7 +49,7 @@ def export_quad_ode_model():
     omegaz  = SX.sym('omegaz')
 
     
-    x = vertcat(q0,q1,q2,q3,omegax,omegay,omegaz)
+    x = vertcat(q0, q1, q2, q3, omegax, omegay, omegaz)
 
     # controls
     w1 = SX.sym('w1')
@@ -97,10 +97,16 @@ def export_quad_ode_model():
     p = vertcat(rho, A, Cl, Cd, m, g, J1, J2, J3)
 
     #Define torque applied to the system
-    T = SX(3,1)
-    T[0, 0] = 0.5 * A * Cl * rho *( w2*w2 - w4*w4)
+    T = SX(3, 1)
+    T[0, 0] = 0.5 * A * Cl * rho * (w2*w2 - w4*w4)
     T[1, 0] = 0.5 * A * Cl * rho * (w1 * w1 - w3 * w3)
     T[2, 0] = 0.5 * A * Cl * rho * (w1 * w1 - w2 * w2 + w3*w3 - w4*w4)
+
+    # Reference generation (quaternion to eul) used in cost function.
+    Eul = SX(3,1)
+    Eul[0, 0] = arctan2(2 * (q0*q1 + q2*q3), 1 - 2 * (q1**2 + q2**2))
+    Eul[1, 0] = arcsin(2 * (q0*q2 - q3*q1))
+    Eul[2, 0] = arctan2(2 * (q0*q3 + q1*q2), 1 - 2 * (q2**2 + q3**2))
 
     # dynamics
     f_expl = vertcat(
@@ -121,11 +127,23 @@ def export_quad_ode_model():
     model.p = p
     model.name = model_name
 
-    #add the nonlinear cost.
-    # TODO Actually implement these expressions from the paper.
-    model.cost_y_expr = np.ones((7+4+3,1))  #: CasADi expression for nonlinear least squares
-    model.cost_y_expr_e = np.ones((7+3,1))  #: CasADi expression for nonlinear least squares, terminal
-
+    # add the nonlinear cost.
+    # Cost defined in paper
+    #            ---                    ---
+    #            | roll(x)   - roll_ref    |
+    #            | pitch(x)  - pitch_ref   |
+    # l(x,u,z) = | yaw(x)    - yaw_ref     |
+    #            | x         - x_ref       |
+    #            | u         - u_ref       |
+    #            ---                    ---  14x1
+    #        ---                    ---
+    #        | roll(x)   - roll_ref    |
+    #        | pitch(x)  - pitch_ref   |
+    # m(x) = | yaw(x)    - yaw_ref     |
+    #        | x         - x_ref       |
+    #        ---                    ---  10x1
+    model.cost_y_expr = vertcat(Eul, x, u)  #: CasADi expression for nonlinear least squares
+    model.cost_y_expr_e = vertcat(Eul, x)   #: CasADi expression for nonlinear least squares, terminal
 
     return model
 
