@@ -38,7 +38,6 @@ def export_quad_ode_model():
 
     model_name = 'quad_ode'
 
-
     # set up states & controls
     q0      = SX.sym('q0')
     q1      = SX.sym('q1')
@@ -48,7 +47,6 @@ def export_quad_ode_model():
     omegay  = SX.sym('omegay')
     omegaz  = SX.sym('omegaz')
 
-    
     x = vertcat(q0, q1, q2, q3, omegax, omegay, omegaz)
 
     # controls
@@ -56,6 +54,7 @@ def export_quad_ode_model():
     w2 = SX.sym('w2')
     w3 = SX.sym('w3')
     w4 = SX.sym('w4')
+
     u = vertcat(w1, w2, w3, w4)
     
     # xdot
@@ -123,7 +122,7 @@ def export_quad_ode_model():
     model.x = x
     model.xdot = xdot
     model.u = u
-    # model.z = z
+    # model.z = []
     model.p = p
     model.name = model_name
 
@@ -144,6 +143,8 @@ def export_quad_ode_model():
     #        ---                    ---  10x1
     model.cost_y_expr = vertcat(Eul, x, u)  #: CasADi expression for nonlinear least squares
     model.cost_y_expr_e = vertcat(Eul, x)   #: CasADi expression for nonlinear least squares, terminal
+
+    # print(0.5*mtimes(transpose(S),OMG))
 
     return model
 
