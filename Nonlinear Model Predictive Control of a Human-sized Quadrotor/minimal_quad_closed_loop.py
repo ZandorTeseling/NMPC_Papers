@@ -62,33 +62,45 @@ nx = model.x.size()[0]
 nu = model.u.size()[0]
 # nz  = model.z.size()[0]
 np = model.p.size()[0]
-ny = nx + nu + 3
-ny_e = nx + 3
+ny = nx + nu #+ 3 # plus Attitude
+ny_e = nx #+ 3 # plus Attitude
 N = 20
 
 # set dimensions
 ocp.dims.nx = nx
 ocp.dims.ny = ny
 ocp.dims.ny_e = ny_e
-ocp.dims.nbu = nu
+# ocp.dims.nbu = nu
 ocp.dims.nu = nu
 ocp.dims.np = np
 ocp.dims.N = N
 
 
 # set cost module
-ocp.cost.cost_type = 'NONLINEAR_LS'
-ocp.cost.cost_type_e = 'NONLINEAR_LS'
+# ocp.cost.cost_type = 'NONLINEAR_LS'
+# ocp.cost.cost_type_e = 'NONLINEAR_LS'
+ocp.cost.cost_type = 'LINEAR_LS'
+ocp.cost.cost_type_e = 'LINEAR_LS'
 
 # From the paper
 # W = [5*10^2*I_3, 1*10^-3 I_11]
 # Wn = [5*10^2*I_3, 1*q0^-3 * I_7]
+# NLS isn't working, try linear cost.
+# W = [ 1*10^-3* I_11]
+# Wn = [1*q0^-3 * I_7]
+
+ocp.cost.Vx = nmp.zeros((ny, nx))
+ocp.cost.Vx[:nx, :nx] = nmp.eye(nx)
+
+ocp.cost.Vu = nmp.zeros((ny, nu))
+ocp.cost.Vu[nx:, :nu] = nmp.eye(nu)
+ocp.cost.Vx_e = nmp.eye(nx)
+
 
 AttCost = 5 * (10**2) * nmp.ones(3)
 StateCost = 1 * (10**-3) * nmp.ones(nx)
-print(AttCost)
-
-Q = nmp.diag(nmp.concatenate((AttCost, StateCost)))
+# Q = nmp.diag(nmp.concatenate((AttCost, StateCost)))
+Q = nmp.diag((StateCost))
 
 ContCost = 1 * (10**-8) * nmp.ones(nu)
 R = nmp.diag(ContCost)
@@ -96,14 +108,24 @@ R = nmp.diag(ContCost)
 ocp.cost.W = scipy.linalg.block_diag(Q, R)
 ocp.cost.W_e = Q
 
-ocp.cost.yref  = nmp.zeros((14, ))
-ocp.cost.yref[2] = 1.571 # Yaw +90 degrees.
-ocp.cost.yref[3] = 0.707 # Quaternion
-ocp.cost.yref[6] = 0.707
-ocp.cost.yref_e = nmp.zeros((10, ))
-ocp.cost.yref_e[2] = 1.571
+
+ocp.cost.yref  = nmp.zeros((nx+nu, ))
+ocp.cost.yref[0] = 0.707 # Quaternion
+ocp.cost.yref[3] = 0.707
+ocp.cost.yref_e = nmp.zeros((nx, ))
+ocp.cost.yref_e[0] = 0.707
 ocp.cost.yref_e[3] = 0.707
-ocp.cost.yref_e[6] = 0.707
+
+
+
+# ocp.cost.yref  = nmp.zeros((14, ))
+# # ocp.cost.yref[2] = 1.571 # Yaw +90 degrees.
+# ocp.cost.yref[3] = 0.707 # Quaternion
+# ocp.cost.yref[6] = 0.707
+# ocp.cost.yref_e = nmp.zeros((10, ))
+# ocp.cost.yref_e[2] = 1.571
+# ocp.cost.yref_e[3] = 0.707
+# ocp.cost.yref_e[6] = 0.707
 
 # init conditions
 x0 = nmp.array([1.0,
@@ -117,19 +139,19 @@ x0 = nmp.array([1.0,
 # set constraints
 uMax = 39.99
 ocp.constraints.constr_type = 'BGH'
-ocp.constraints.lbu = nmp.array([-uMax, -uMax, -uMax, -uMax])
-ocp.constraints.ubu = nmp.array([uMax, uMax, uMax, uMax])
+# ocp.constraints.lbu = nmp.array([-uMax, -uMax, -uMax, -uMax])
+# ocp.constraints.ubu = nmp.array([uMax, uMax, uMax, uMax])
 ocp.constraints.x0 = x0
 ocp.constraints.p = p
-ocp.constraints.idxbu = nmp.array([0, 1, 2, 3])
+# ocp.constraints.idxbu = nmp.array([0, 1, 2, 3])
 
-ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'#'PARTIAL_CONDENSING_HPIPM' # FULL_CONDENSING_QPOASES
+ocp.solver_options.qp_solver = 'FULL_CONDENSING_HPIPM'#'PARTIAL_CONDENSING_HPIPM' # FULL_CONDENSING_QPOASES
 ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
 ocp.solver_options.integrator_type = 'ERK'
 ocp.solver_options.nlp_solver_type = 'SQP' # SQP_RTI
-ocp.solver_options.qp_solver_iter_max = 100
+ocp.solver_options.nlp_solver_max_iter = 200
 
-# ocp.solver_options.qp_solver_cond_N = N
+ocp.solver_options.qp_solver_cond_N = N
 
 # set prediction horizon
 ocp.solver_options.tf = Tf
@@ -144,8 +166,6 @@ simU = nmp.ndarray((N, nu))
 
 simX[0, :] = x0
 
-print(x0)
-# closed loop
 for i in range(N):
     # solve ocp
     acados_ocp_solver.set(0, "lbx", x0)
