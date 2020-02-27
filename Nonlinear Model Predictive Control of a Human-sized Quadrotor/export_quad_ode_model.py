@@ -66,7 +66,7 @@ def export_quad_ode_model():
     omegay_dot  = SX.sym('omegay_dot')
     omegaz_dot  = SX.sym('omegaz_dot')
 
-    xdot = vertcat(q0_dot,q1_dot,q2_dot,q3_dot,omegax_dot,omegay_dot,omegaz_dot)
+    xdot = vertcat(q0_dot, q1_dot, q2_dot, q3_dot, omegax_dot, omegay_dot, omegaz_dot)
 
     # algebraic variables
     # z = None
@@ -82,24 +82,26 @@ def export_quad_ode_model():
     J1 = SX.sym('J1')   # mom inertia
     J2 = SX.sym('J2')   # mom inertia
     J3 = SX.sym('J3')   # mom inertia
-    J = diag(vertcat(J1,J2,J3))
+    J = diag(vertcat(J1, J2, J3))
 
     # This comes from ref[6] pg 449.
     # dq = 1/2 * G(q)' * Ω
-    S = SX(3,4)
-    S[:,0] = vertcat(-q1,-q2,-q3)
-    S[:,1:4] = q0*np.eye(3) - skew(vertcat(q1,q2,q3))
+    S = SX.zeros(3, 4)
+    S[:, 0] = vertcat(-q1, -q2, -q3)
+    S[:, 1:4] = q0*np.eye(3) - skew(vertcat(q1, q2, q3))
 
+    print("S:", S, S.shape)
     #Define angular velocity vector
-    OMG = vertcat(omegax,omegay,omegaz)
+    OMG = vertcat(omegax, omegay, omegaz)
 
     p = vertcat(rho, A, Cl, Cd, m, g, J1, J2, J3)
 
     #Define torque applied to the system
     T = SX(3, 1)
-    T[0, 0] = 0.5 * A * Cl * rho * (w2*w2 - w4*w4)
+
+    T[0, 0] = 0.5 * A * Cl * rho * (w2 * w2 - w4 * w4)
     T[1, 0] = 0.5 * A * Cl * rho * (w1 * w1 - w3 * w3)
-    T[2, 0] = 0.5 * A * Cl * rho * (w1 * w1 - w2 * w2 + w3*w3 - w4*w4)
+    T[2, 0] = 0.5 * A * Cd * rho * (w1 * w1 - w2 * w2 + w3 * w3 - w4 * w4)
 
     # Reference generation (quaternion to eul) used in cost function.
     Eul = SX(3,1)
@@ -109,12 +111,12 @@ def export_quad_ode_model():
 
     # dynamics
     f_expl = vertcat(
-                        0.5*mtimes(transpose(S),OMG),
-                        mtimes(inv(J),( T - cross(OMG,mtimes(J,OMG))))
+                        0.5*mtimes(transpose(S), OMG),
+                        mtimes(inv(J), (T - cross(OMG, mtimes(J, OMG))))
                      )
 
     f_impl = xdot - f_expl
-
+    print("dynamics shape: ", f_expl.shape)
     model = AcadosModel()
 
     model.f_impl_expr = f_impl
@@ -143,8 +145,16 @@ def export_quad_ode_model():
     #        ---                    ---  10x1
     model.cost_y_expr = vertcat(Eul, x, u)  #: CasADi expression for nonlinear least squares
     model.cost_y_expr_e = vertcat(Eul, x)   #: CasADi expression for nonlinear least squares, terminal
-
-    # print(0.5*mtimes(transpose(S),OMG))
-
+    model.con_h_expr = q0*q0 + q1*q1 + q2*q2 + q3*q3
+    # # yReference checking.
+    # refCheck = Function('y_ref', [vertcat(x, u)], [model.cost_y_expr])
+    # print(refCheck)
+    # y_ref = refCheck(np.array([0.566, 0.571, 0.168, 0.571, 0.1, 0.2, 0.3, 1, 2, 3, 4]))
+    # print(y_ref)
+    #
+    # dynCheck = Function('sys_dyn', [vertcat(x, u),p], [f_expl])
+    # print(dynCheck)
+    # dx_ref = dynCheck(np.array([0.566, 0.571, 0.168, 0.571, 0.1, 0.2, 0.3, 1, 2, 3, 4]),np.array([1, 1, 1, 1, 1, 1, 1, 1, 1]))
+    # print(dx_ref)
     return model
 

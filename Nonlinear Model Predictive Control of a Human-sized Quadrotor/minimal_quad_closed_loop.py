@@ -37,6 +37,9 @@ from utils import *
 import numpy as nmp
 import scipy.linalg
 
+
+COST_MODULE = 'NLS'
+USE_QUAT_SLACK = 1
 # create ocp object to formulate the OCP
 ocp = AcadosOcp()
 
@@ -56,51 +59,70 @@ J2 =    J3*4
 J1 =    J3*4
 p = nmp.array([rho, A, Cl, Cd, m, g, J1, J2, J3])
 
+#For optimal control
 Tf = 1.0
-Dt = 0.05
+N = 20
+dt = Tf/N
+
 nx = model.x.size()[0]
 nu = model.u.size()[0]
 # nz  = model.z.size()[0]
 np = model.p.size()[0]
-ny = nx + nu #+ 3 # plus Attitude
-ny_e = nx #+ 3 # plus Attitude
-N = 20
-
-# set dimensions
-ocp.dims.nx = nx
-ocp.dims.ny = ny
-ocp.dims.ny_e = ny_e
-# ocp.dims.nbu = nu
-ocp.dims.nu = nu
-ocp.dims.np = np
-ocp.dims.N = N
-
-
-# set cost module
-# ocp.cost.cost_type = 'NONLINEAR_LS'
-# ocp.cost.cost_type_e = 'NONLINEAR_LS'
-ocp.cost.cost_type = 'LINEAR_LS'
-ocp.cost.cost_type_e = 'LINEAR_LS'
-
-# From the paper
-# W = [5*10^2*I_3, 1*10^-3 I_11]
-# Wn = [5*10^2*I_3, 1*q0^-3 * I_7]
-# NLS isn't working, try linear cost.
-# W = [ 1*10^-3* I_11]
-# Wn = [1*q0^-3 * I_7]
-
-ocp.cost.Vx = nmp.zeros((ny, nx))
-ocp.cost.Vx[:nx, :nx] = nmp.eye(nx)
-
-ocp.cost.Vu = nmp.zeros((ny, nu))
-ocp.cost.Vu[nx:, :nu] = nmp.eye(nu)
-ocp.cost.Vx_e = nmp.eye(nx)
-
+if USE_QUAT_SLACK == 1:
+    nh = model.con_h_expr.size()[0]
 
 AttCost = 5 * (10**2) * nmp.ones(3)
 StateCost = 1 * (10**-3) * nmp.ones(nx)
-# Q = nmp.diag(nmp.concatenate((AttCost, StateCost)))
-Q = nmp.diag((StateCost))
+
+if COST_MODULE == 'LS':
+    # set cost module
+    ocp.cost.cost_type = 'LINEAR_LS'
+    ocp.cost.cost_type_e = 'LINEAR_LS'
+    ny = nx + nu
+    ny_e = nx
+    ocp.dims.ny = ny
+    ocp.dims.ny_e = ny_e
+    # W = [ 1*10^-3* I_11]
+    # Wn = [1*q0^-3 * I_7]
+
+    ocp.cost.Vx = nmp.zeros((ny, nx))
+    ocp.cost.Vx[:nx, :nx] = nmp.eye(nx)
+
+    ocp.cost.Vu = nmp.zeros((ny, nu))
+    ocp.cost.Vu[nx:, :nu] = nmp.eye(nu)
+    ocp.cost.Vx_e = nmp.eye(nx)
+    Q = nmp.diag((StateCost))
+
+elif COST_MODULE == 'NLS':
+    # From the paper
+    # W = [5*10^2*I_3, 1*10^-3 I_11]
+    # Wn = [5*10^2*I_3, 1*q0^-3 * I_7]
+
+    ocp.cost.cost_type = 'NONLINEAR_LS'
+    ocp.cost.cost_type_e = 'NONLINEAR_LS'
+    ny = nx + nu + 3 # plus Attitude
+    ny_e = nx + 3 # plus Attitude
+    ocp.dims.ny = ny
+    ocp.dims.ny_e = ny_e
+
+    Q = nmp.diag(nmp.concatenate((AttCost, StateCost)))
+
+if USE_QUAT_SLACK == 1:
+    ocp.dims.nh = nh
+    ocp.dims.nsh = 1
+    ocp.dims.ns = 1
+    # cost on slack variable
+    ocp.cost.Zl = nmp.array([10])
+    ocp.cost.Zu = nmp.array([10])
+    ocp.cost.zl = nmp.array([10])
+    ocp.cost.zu = nmp.array([10])
+
+# set cost module independent dimensions
+ocp.dims.nx = nx
+ocp.dims.nbu = nu
+ocp.dims.nu = nu
+ocp.dims.np = np
+ocp.dims.N = N
 
 ContCost = 1 * (10**-8) * nmp.ones(nu)
 R = nmp.diag(ContCost)
@@ -108,50 +130,61 @@ R = nmp.diag(ContCost)
 ocp.cost.W = scipy.linalg.block_diag(Q, R)
 ocp.cost.W_e = Q
 
+# Due to the paper using the forulation in cascade,
+# some steady state is assumed as reference form a position controller.
+uSS = 39.99
+if COST_MODULE == 'LS':
+    # q0 q1 q2 q3 omeg1 omeg2 omeg3 w1 w2 w3 w4
+    ocp.cost.yref  = nmp.zeros((nx+nu, ))
+    ocp.cost.yref[0] = 1 # Quaternion
+    ocp.cost.yref[nx:] = uSS
+    # q0 q1 q2 q3 omeg1 omeg2 omeg3
+    ocp.cost.yref_e = nmp.zeros((nx, ))
+    ocp.cost.yref_e[0] = 1
+elif COST_MODULE == 'NLS':
+    # roll pitch yaw q0 q1 q2 q3 omeg1 omeg2 omeg3 w1 w2 w3 w4
+    ocp.cost.yref  = nmp.zeros((14, ))
+    ocp.cost.yref[3] = 1# Quaternion
+    ocp.cost.yref[nx+3:] = uSS
+    # roll pitch yaw q0 q1 q2 q3 omeg1 omeg2 omeg3
+    ocp.cost.yref_e = nmp.zeros((10, ))
+    ocp.cost.yref_e[3] = 1
 
-ocp.cost.yref  = nmp.zeros((nx+nu, ))
-ocp.cost.yref[0] = 0.707 # Quaternion
-ocp.cost.yref[3] = 0.707
-ocp.cost.yref_e = nmp.zeros((nx, ))
-ocp.cost.yref_e[0] = 0.707
-ocp.cost.yref_e[3] = 0.707
 
-
-
-# ocp.cost.yref  = nmp.zeros((14, ))
-# # ocp.cost.yref[2] = 1.571 # Yaw +90 degrees.
-# ocp.cost.yref[3] = 0.707 # Quaternion
-# ocp.cost.yref[6] = 0.707
-# ocp.cost.yref_e = nmp.zeros((10, ))
-# ocp.cost.yref_e[2] = 1.571
-# ocp.cost.yref_e[3] = 0.707
-# ocp.cost.yref_e[6] = 0.707
-
-# init conditions
-x0 = nmp.array([1.0,
+# init conditions, start at yaw of +90deg
+x0 = nmp.array([1,
                0.0,
                0.0,
-               0.0,
+               0,
                0.0,
                0.0,
                0.0])
 
 # set constraints
-uMax = 39.99
+uDel = 8
+uSS = 39.99
 ocp.constraints.constr_type = 'BGH'
-# ocp.constraints.lbu = nmp.array([-uMax, -uMax, -uMax, -uMax])
-# ocp.constraints.ubu = nmp.array([uMax, uMax, uMax, uMax])
+ocp.constraints.lbu = nmp.array([uSS-uDel, uSS-uDel, uSS-uDel, uSS-uDel])
+ocp.constraints.ubu = nmp.array([uSS+uDel, uSS+uDel, uSS+uDel, uSS+uDel])
 ocp.constraints.x0 = x0
-ocp.constraints.p = p
-# ocp.constraints.idxbu = nmp.array([0, 1, 2, 3])
+ocp.parameter_values = p
+ocp.constraints.idxbu = nmp.array([0, 1, 2, 3])
 
-ocp.solver_options.qp_solver = 'FULL_CONDENSING_HPIPM'#'PARTIAL_CONDENSING_HPIPM' # FULL_CONDENSING_QPOASES
+if USE_QUAT_SLACK == 1:
+    # nonlinear quaternion constraint
+    ocp.constraints.lh = nmp.array([1.0])
+    ocp.constraints.uh = nmp.array([1.0])
+    # #slack for nonlinear quat
+    ocp.constraints.lsh = nmp.array([-0.0001])
+    ocp.constraints.ush = nmp.array([0.0001])
+    ocp.constraints.idxsh = nmp.array([0])
+
+ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'#'PARTIAL_CONDENSING_HPIPM' # FULL_CONDENSING_QPOASES
 ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
 ocp.solver_options.integrator_type = 'ERK'
 ocp.solver_options.nlp_solver_type = 'SQP' # SQP_RTI
-ocp.solver_options.nlp_solver_max_iter = 200
-
-ocp.solver_options.qp_solver_cond_N = N
+ocp.solver_options.nlp_solver_max_iter = 50
+ocp.solver_options.print_level = 0
 
 # set prediction horizon
 ocp.solver_options.tf = Tf
@@ -161,12 +194,14 @@ acados_ocp_solver = AcadosOcpSolver(ocp, json_file = 'acados_ocp_' + model.name 
 acados_integrator = AcadosSimSolver(ocp, json_file = 'acados_ocp_' + model.name + '.json')
 acados_integrator.set("p", p)
 
-simX = nmp.ndarray((N+1, nx))
-simU = nmp.ndarray((N, nu))
+Nsim = 200
+
+simX = nmp.zeros((Nsim+1, nx))
+simU = nmp.zeros((Nsim, nu))
 
 simX[0, :] = x0
 
-for i in range(N):
+for i in range(Nsim):
     # solve ocp
     acados_ocp_solver.set(0, "lbx", x0)
     acados_ocp_solver.set(0, "ubx", x0)
@@ -174,25 +209,37 @@ for i in range(N):
     for j in range(N):
         acados_ocp_solver.set(j, "p", p)
 
+    # update trajectory
+    t0 = i * dt
+    for j in range(N):
+        tCurr = t0 + j * dt
+        if tCurr <= 2:
+            # roll = 1 pitch = -1 yaw = 0
+            # q = 0.770 0.421 -0.421 0.230
+            acados_ocp_solver.set(j, "y_ref", nmp.array([1, -1, 0, 0.770, 0.421, -0.421, 0.230, 0, 0, 0, uSS, uSS, uSS, uSS]))
+        elif tCurr <= 4:
+            # roll = -1 pitch = -1 yaw = 0
+            # q = 0.770 -0.421 -0.421 -0.230
+            acados_ocp_solver.set(j, "y_ref",  nmp.array([-1, -1, 0, 0.770, -0.421, -0.421, -0.230, 0, 0, 0, uSS, uSS, uSS, uSS]))
+        elif tCurr <= 6:
+            # roll = -1 pitch = 1 yaw = 0
+            # q = 0.770 -0.421 0.421 0.230
+            acados_ocp_solver.set(j, "y_ref",  nmp.array([-1, 1, 0, 0.770, -0.421, 0.421, 0.230, 0, 0, 0, uSS, uSS, uSS, uSS]))
+
     status = acados_ocp_solver.solve()
-    if status != 0:
-        raise Exception('acados acados_ocp_solver returned status {}. Exiting.'.format(status))
+    # if status != 0:
+    #     raise Exception('acados acados_ocp_solver returned status {}. Exiting.'.format(status))
 
     simU[i,:] = acados_ocp_solver.get(0, "u")
-    print("Opt cont: ", simU[i,:])
-    simU[i, 0] += 0.05
-    # simulate system
     acados_integrator.set("x", x0)
     acados_integrator.set("u", simU[i,:])
-
     status = acados_integrator.solve()
     if status != 0:
         raise Exception('acados integrator returned status {}. Exiting.'.format(status))
 
     # update state
     x0 = acados_integrator.get("x")
-    print("After sim: ", x0)
     simX[i+1, :] = x0
 
 # plot results
-plot_quad(Tf/N, uMax, simU, simX)
+plot_quad(dt, uSS, uDel, simU, simX)

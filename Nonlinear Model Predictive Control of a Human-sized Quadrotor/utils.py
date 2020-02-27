@@ -110,7 +110,7 @@ def YPRtoQuat(rpy):
 
     return q
 
-def plot_quad(h, u_max, U, X_true, X_est=None, Y_measured=None, latexify=True):
+def plot_quad(h, U_ss, U_del, U, X_true, X_est=None, Y_measured=None, latexify=True):
     """
     Params:
         h: time step
@@ -162,9 +162,9 @@ def plot_quad(h, u_max, U, X_true, X_est=None, Y_measured=None, latexify=True):
     plt.title('closed-loop control inputs')
     plt.ylabel('$u$')
     plt.xlabel('$t$')
-    plt.hlines(u_max, t[0], t[-2], linestyles='dashed', alpha=0.7)
-    plt.hlines(-u_max, t[0], t[-2], linestyles='dashed', alpha=0.7 )
-    plt.ylim([1.2*u_max, -1.2*u_max])
+    plt.hlines(U_ss + U_del, t[0], t[-2], linestyles='dashed', alpha=0.7)
+    plt.hlines(U_ss - U_del, t[0], t[-2], linestyles='dashed', alpha=0.7 )
+    plt.ylim((U_ss - 1.2*U_del,U_ss + 1.2*U_del))
     plt.grid()
     plt.legend(control_labels)
 
@@ -183,6 +183,7 @@ def plot_quad(h, u_max, U, X_true, X_est=None, Y_measured=None, latexify=True):
         plt.xlabel('$t$')
         plt.grid()
         plt.figure(2).suptitle("Quaternions")
+        plt.ylim([1, -1])
         plt.legend(loc=1)
 
 
