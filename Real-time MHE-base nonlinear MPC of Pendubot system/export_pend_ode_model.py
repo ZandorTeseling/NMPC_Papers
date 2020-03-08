@@ -77,7 +77,7 @@ def export_pend_ode_model():
     g = SX.sym('g')
 
     I1 = 1 / 3 * m1 * l1
-    I2 = 1 / 3 * m2 * l1
+    I2 = 1 / 3 * m2 * l2
     p = vertcat(m1, m2, l1, l2, lc1, lc2, g)
 
     # system dynamics.

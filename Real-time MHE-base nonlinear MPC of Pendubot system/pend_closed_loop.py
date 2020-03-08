@@ -31,7 +31,7 @@
 # POSSIBILITY OF SUCH DAMAGE.;
 #
 
-from acados_template import AcadosOcp, AcadosOcpSolver, AcadosSimSolver
+from acados_template import AcadosOcp, AcadosOcpSolver, AcadosSim, AcadosSimSolver
 from export_pend_ocp_solver import export_ocp_solver
 from export_pend_ode_model import export_pend_ode_model
 from utils import *
@@ -40,13 +40,9 @@ import scipy.linalg
 
 
 COST_MODULE = 'LS'
-# create ocp object to formulate the OCP
-ocp = AcadosOcp()
 
 # set model
 model = export_pend_ode_model()
-ocp.model = model
-
 # model parameters
 m1 = 0.265  # mass link 1
 m2 = 0.226  # mass link 2
@@ -70,52 +66,15 @@ np = model.p.size()[0]
 StateCost = nmp.ones(nx)
 StateCost[0] = 1e3
 StateCost[1] = 1e3
+Q = nmp.diag((StateCost))
 
-if COST_MODULE == 'LS':
-    # set cost module
-    ocp.cost.cost_type = 'LINEAR_LS'
-    ocp.cost.cost_type_e = 'LINEAR_LS'
-    ny = nx + nu
-    ny_e = nx
-    ocp.dims.ny = ny
-    ocp.dims.ny_e = ny_e
-
-    ocp.cost.Vx = nmp.zeros((ny, nx+2))
-    ocp.cost.Vx[:nx, :nx] = nmp.eye(nx)
-
-    ocp.cost.Vu = nmp.zeros((ny, nu))
-    ocp.cost.Vu[nx:, :nu] = nmp.eye(nu)
-
-    ocp.cost.Vx_e = nmp.zeros((ny_e, nx + 2))
-    ocp.cost.Vx_e[:ny_e, :ny_e] = nmp.eye(ny_e)
-    Q = nmp.diag((StateCost))
-
-print("Q:\n", Q)
-print("Vx:\n", ocp.cost.Vx)
-print("Vx_e:\n", ocp.cost.Vx_e)
-print("Vu:\n", ocp.cost.Vu)
-# set cost module independent dimensions
-ocp.dims.nx = nx
-ocp.dims.nbu = nu
-ocp.dims.nu = nu
-ocp.dims.np = np
-ocp.dims.N = N
 
 ContCost = 1 * (10**-3) * nmp.ones(nu)
 R = nmp.diag(ContCost)
 
-ocp.cost.W = scipy.linalg.block_diag(Q, R)
-ocp.cost.W_e = Q
 
-if COST_MODULE == 'LS':
-    ocp.cost.yref  = nmp.zeros((nx+nu, ))
-    ocp.cost.yref[0] = 1.5707 # joint 1 u
-    ocp.cost.yref_e = nmp.zeros((nx, ))
-    ocp.cost.yref_e[0] = 1.5707
-
-
-b1 = 0.2  # damping coef joint 1
-b2 = 0.1  # damping coef joint 2
+b1 = 0.75  # damping coef joint 1
+b2 = 0.5  # damping coef joint 2
 x0 = nmp.array([-1.5707,
                0.0,
                0.0,
@@ -123,30 +82,19 @@ x0 = nmp.array([-1.5707,
                b1,  # damping coef joint 1
                b2    # damping coef joint 2
                 ])
+uMax = 4
+acados_ocp_solver = export_ocp_solver(model, N, dt, Q, R, x0, uMax)
 
-# set constraints
-uMax = 4.0
-ocp.constraints.constr_type = 'BGH'
-ocp.constraints.lbu = nmp.array([-uMax])
-ocp.constraints.ubu = nmp.array([uMax])
-ocp.constraints.x0 = x0
-ocp.parameter_values = p
-ocp.constraints.idxbu = nmp.array([0 ])
 
-ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'#'PARTIAL_CONDENSING_HPIPM' # FULL_CONDENSING_QPOASES
-ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
-ocp.solver_options.integrator_type = 'ERK'
-ocp.solver_options.nlp_solver_type = 'SQP_RTI' # SQP_RTI
-# ocp.solver_options.nlp_solver_max_iter = 5
-ocp.solver_options.print_level = 0
+sim = AcadosSim()
+sim.model = model
+# set simulation time
+sim.solver_options.T = dt
+# set options
+sim.solver_options.num_stages = 4
+sim.solver_options.num_steps = 6
 
-# set prediction horizon
-ocp.solver_options.tf = Tf
-
-# acados_ocp_solver = AcadosOcpSolver(ocp, json_file = 'acados_ocp_' + model.name + '.json')
-acados_ocp_solver = export_ocp_solver(model, N, dt, Q, R, uMax)
-
-acados_integrator = AcadosSimSolver(ocp, json_file = 'acados_ocp_' + model.name + '.json')
+acados_integrator = AcadosSimSolver(sim)
 acados_integrator.set("p", p)
 
 Nsim = int(40/dt)
@@ -159,6 +107,7 @@ simX[0, :] = x0
 for i in range(Nsim):
     # ~~~~~NMPC~~~~~~
     # solve ocp
+    acados_ocp_solver.set(0, "x", x0)
     acados_ocp_solver.set(0, "lbx", x0)
     acados_ocp_solver.set(0, "ubx", x0)
     # update params

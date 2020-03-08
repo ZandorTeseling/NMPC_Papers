@@ -35,7 +35,7 @@ import numpy as nmp
 import scipy
 from acados_template import *
 
-def export_ocp_solver(model, N, h, Q, R, Taumax=2):
+def export_ocp_solver(model, N, h, Q, R, x0, Taumax=2 ):
     COST_MODULE = 'LS'
     # create render arguments
     ocp = AcadosOcp()
@@ -44,7 +44,7 @@ def export_ocp_solver(model, N, h, Q, R, Taumax=2):
     ocp.model = model
 
     Tf = N*h
-    nx = model.x.size()[0] - 2
+    nx = model.x.size()[0]
     nu = model.u.size()[0]
     np = model.p.size()[0]
 
@@ -54,22 +54,22 @@ def export_ocp_solver(model, N, h, Q, R, Taumax=2):
         # set cost module
         ocp.cost.cost_type = 'LINEAR_LS'
         ocp.cost.cost_type_e = 'LINEAR_LS'
-        ny = nx + nu
-        ny_e = nx
+        ny = nx + nu - 2
+        ny_e = nx - 2
         ocp.dims.ny = ny
         ocp.dims.ny_e = ny_e
 
-        ocp.cost.Vx = nmp.zeros((ny, nx + 2))
-        ocp.cost.Vx[:nx, :nx] = nmp.eye(nx)
+        ocp.cost.Vx = nmp.zeros((ny, nx ))
+        ocp.cost.Vx[:nx-2, :nx-2] = nmp.eye(nx-2)
 
         ocp.cost.Vu = nmp.zeros((ny, nu))
-        ocp.cost.Vu[nx:, :nu] = nmp.eye(nu)
+        ocp.cost.Vu[nx-2:, :nu] = nmp.eye(nu)
 
-        ocp.cost.Vx_e = nmp.zeros((ny_e, nx + 2))
+        ocp.cost.Vx_e = nmp.zeros((ny_e, nx ))
         ocp.cost.Vx_e[:ny_e, :ny_e] = nmp.eye(ny_e)
 
     # set cost module independent dimensions
-    ocp.dims.nx = nx
+    ocp.dims.nx = nx -2
     ocp.dims.nbu = nu
     ocp.dims.nu = nu
     ocp.dims.np = np
@@ -78,18 +78,16 @@ def export_ocp_solver(model, N, h, Q, R, Taumax=2):
     ocp.cost.W = scipy.linalg.block_diag(Q, R)
     ocp.cost.W_e = Q
 
-    ocp.cost.yref  = nmp.zeros((ny, ))
-    ocp.cost.yref_e = nmp.zeros((ny_e, ))
-
-    print("Q:\n", Q)
-    print("Vx:\n", ocp.cost.Vx)
-    print("Vx_e:\n", ocp.cost.Vx_e)
-    print("Vu:\n", ocp.cost.Vu)
+    if COST_MODULE == 'LS':
+        ocp.cost.yref = nmp.zeros((nx-2 + nu,))
+        ocp.cost.yref[0] = 1.5707  # joint 1 u
+        ocp.cost.yref_e = nmp.zeros((nx-2,))
+        ocp.cost.yref_e[0] = 1.5707
 
     # setting bounds
     ocp.constraints.lbu = nmp.array([-Taumax])
     ocp.constraints.ubu = nmp.array([+Taumax])
-    ocp.constraints.x0 = nmp.zeros((nx+2, ))
+    ocp.constraints.x0 = x0
     ocp.constraints.idxbu = nmp.array([0])
     ocp.parameter_values = nmp.zeros((np, ))
 
@@ -103,7 +101,6 @@ def export_ocp_solver(model, N, h, Q, R, Taumax=2):
     # ocp.solver_options.nlp_solver_type = 'SQP'
     ocp.solver_options.nlp_solver_type = 'SQP_RTI'
     # ocp.solver_options.nlp_solver_max_iter = 5
+    ocp.solver_options.print_level = 0
 
-    double_pend_solver = AcadosOcpSolver(ocp, json_file = 'acados_ocp.json')
-
-    return double_pend_solver
+    return AcadosOcpSolver(ocp, json_file = 'acados_ocp.json')
