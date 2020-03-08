@@ -110,6 +110,37 @@ def YPRtoQuat(rpy):
 
     return q
 
+def QuattoR(q):
+    """
+    Params:
+    In:
+        q: 1 x 4
+    Out
+        R: 3 x 3
+    """
+    R = np.zeros((3, 3))
+    if q.shape[0] != 1:
+        print("Error:", q.shape[0])
+        return R
+    q0 = q[0, 0]
+    q1 = q[0, 1]
+    q2 = q[0, 2]
+    q3 = q[0, 3]
+
+    R[0, 0] = 1 - 2*(q2**2 + q3**2)
+    R[0, 1] = 2*(q1*q2 - q3*q0)
+    R[0, 2] = 2*(q1*q3 + q2*q0)
+
+    R[1, 0] = 2*(q1*q2 + q3*q0)
+    R[1, 1] = 1 - 2*(q1**2 + q3**2)
+    R[1, 2] = 2*(q2*q3 - q1*q0)
+
+    R[2, 0] = 2*(q1*q3 - q2*q0)
+    R[2, 1] = 2*(q2*q3 + q1*q0)
+    R[2, 2] = 1 - 2*(q1**2 + q2**2)
+
+    return R
+
 def plot_quad(h, U_ss, U_del, U, X_true, X_est=None, Y_measured=None, latexify=True):
     """
     Params:

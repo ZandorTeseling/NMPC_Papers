@@ -39,7 +39,7 @@ import scipy.linalg
 
 
 COST_MODULE = 'NLS'
-USE_QUAT_SLACK = 1
+USE_QUAT_SLACK = 0
 # create ocp object to formulate the OCP
 ocp = AcadosOcp()
 
@@ -124,7 +124,7 @@ ocp.dims.nu = nu
 ocp.dims.np = np
 ocp.dims.N = N
 
-ContCost = 1 * (10**-8) * nmp.ones(nu)
+ContCost = 1 * (10**-3) * nmp.ones(nu)
 R = nmp.diag(ContCost)
 
 ocp.cost.W = scipy.linalg.block_diag(Q, R)
@@ -152,10 +152,10 @@ elif COST_MODULE == 'NLS':
 
 
 # init conditions, start at yaw of +90deg
-x0 = nmp.array([1,
+x0 = nmp.array([0.285,
+               -0.959,
                0.0,
                0.0,
-               0,
                0.0,
                0.0,
                0.0])
@@ -175,15 +175,14 @@ if USE_QUAT_SLACK == 1:
     ocp.constraints.lh = nmp.array([1.0])
     ocp.constraints.uh = nmp.array([1.0])
     # #slack for nonlinear quat
-    ocp.constraints.lsh = nmp.array([-0.0001])
-    ocp.constraints.ush = nmp.array([0.0001])
+    ocp.constraints.lsh = nmp.array([-0.2])
+    ocp.constraints.ush = nmp.array([0.2])
     ocp.constraints.idxsh = nmp.array([0])
 
-ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'#'PARTIAL_CONDENSING_HPIPM' # FULL_CONDENSING_QPOASES
+ocp.solver_options.qp_solver = 'FULL_CONDENSING_HPIPM'#'PARTIAL_CONDENSING_HPIPM' # FULL_CONDENSING_QPOASES
 ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
-ocp.solver_options.integrator_type = 'ERK'
-ocp.solver_options.nlp_solver_type = 'SQP' # SQP_RTI
-ocp.solver_options.nlp_solver_max_iter = 50
+ocp.solver_options.integrator_type = 'IRK'
+ocp.solver_options.nlp_solver_type = 'SQP_RTI' # SQP_RTI
 ocp.solver_options.print_level = 0
 
 # set prediction horizon
@@ -227,12 +226,12 @@ for i in range(Nsim):
             acados_ocp_solver.set(j, "y_ref",  nmp.array([-1, 1, 0, 0.770, -0.421, 0.421, 0.230, 0, 0, 0, uSS, uSS, uSS, uSS]))
 
     status = acados_ocp_solver.solve()
-    # if status != 0:
-    #     raise Exception('acados acados_ocp_solver returned status {}. Exiting.'.format(status))
+    if status != 0:
+        raise Exception('acados acados_ocp_solver returned status {}. Exiting.'.format(status))
 
-    simU[i,:] = acados_ocp_solver.get(0, "u")
+    simU[i, :] = acados_ocp_solver.get(0, "u")
     acados_integrator.set("x", x0)
-    acados_integrator.set("u", simU[i,:])
+    acados_integrator.set("u", simU[i, :])
     status = acados_integrator.solve()
     if status != 0:
         raise Exception('acados integrator returned status {}. Exiting.'.format(status))
@@ -241,5 +240,10 @@ for i in range(Nsim):
     x0 = acados_integrator.get("x")
     simX[i+1, :] = x0
 
+qtest = YPRtoQuat(nmp.array([nmp.pi/4, nmp.pi/4, 0]))
+print("q\n",qtest)
+R = QuattoR(qtest)
+print("RMat:\n", R)
 # plot results
-plot_quad(dt, uSS, uDel, simU, simX)
+# plot_quad(dt, uSS, uDel, simU, simX)
+
