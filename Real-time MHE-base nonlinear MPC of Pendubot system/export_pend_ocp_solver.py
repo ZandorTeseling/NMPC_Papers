@@ -35,13 +35,14 @@ import numpy as nmp
 import scipy
 from acados_template import *
 
-def export_ocp_solver(model, N, h, Q, R, x0, Taumax=2 ):
-    COST_MODULE = 'LS'
+def export_ocp_solver(model, N, h, Q, R, x0, Taumax=2, COST_MODULE='LS' ):
+
     # create render arguments
     ocp = AcadosOcp()
 
     # set model
     ocp.model = model
+    ocp.model.name  = "pend_ocp"
 
     Tf = N*h
     nx = model.x.size()[0]
@@ -67,6 +68,28 @@ def export_ocp_solver(model, N, h, Q, R, x0, Taumax=2 ):
 
         ocp.cost.Vx_e = nmp.zeros((ny_e, nx ))
         ocp.cost.Vx_e[:ny_e, :ny_e] = nmp.eye(ny_e)
+    elif COST_MODULE == 'NLS':
+        # set cost module
+        ocp.cost.cost_type = 'NONLINEAR_LS'
+        ocp.cost.cost_type_e = 'NONLINEAR_LS'
+        ny = nx + nu - 2 + 2 # cos(q1) sin(q1) cos(q2) sin(q2) dq1 dq2 u:  no cost on b1 b2
+        ny_e = nx - 2 + 2
+        ocp.dims.ny = ny
+        ocp.dims.ny_e = ny_e
+
+        ocp.model.cost_y_expr = vertcat(cos(model.x[0]),
+                                        sin(model.x[0]),
+                                        cos(model.x[1]),
+                                        sin(model.x[1]),
+                                        model.x[2],
+                                        model.x[3],
+                                        model.u)
+        ocp.model.cost_y_expr_e = vertcat(cos(model.x[0]),
+                                        sin(model.x[0]),
+                                        cos(model.x[1]),
+                                        sin(model.x[1]),
+                                        model.x[2],
+                                        model.x[3])
 
     # set cost module independent dimensions
     ocp.dims.nx = nx -2
@@ -83,7 +106,13 @@ def export_ocp_solver(model, N, h, Q, R, x0, Taumax=2 ):
         ocp.cost.yref[0] = 1.5707  # joint 1 u
         ocp.cost.yref_e = nmp.zeros((nx-2,))
         ocp.cost.yref_e[0] = 1.5707
-
+    elif COST_MODULE == 'NLS':
+        ocp.cost.yref = nmp.zeros((nx-2 + 2 + nu,))
+        ocp.cost.yref[0] = cos(1.5707)
+        ocp.cost.yref[1] = sin(1.5707)
+        ocp.cost.yref_e = nmp.zeros((nx-2 + 2,))
+        ocp.cost.yref_e[0] = cos(1.5707)
+        ocp.cost.yref_e[1] = sin(1.5707)
     # setting bounds
     ocp.constraints.lbu = nmp.array([-Taumax])
     ocp.constraints.ubu = nmp.array([+Taumax])

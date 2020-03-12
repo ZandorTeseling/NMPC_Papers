@@ -255,7 +255,7 @@ def plot_quad(h, U_ss, U_del, U, X_true, X_est=None, Y_measured=None, latexify=T
     if os.environ.get('ACADOS_ON_TRAVIS') is None:
         plt.show()
 
-def plot_double_pendulum(h, u_max, U, X_true, X_est=None, Y_measured=None, latexify=True):
+def plot_double_pendulum(h, u_max, U, X_true, X_est=None, U_est=None, Y_measured=None, latexify=True):
     """
     Params:
         h: time step
@@ -283,6 +283,7 @@ def plot_double_pendulum(h, u_max, U, X_true, X_est=None, Y_measured=None, latex
         matplotlib.rcParams.update(params)
 
     WITH_ESTIMATION = X_est is not None and Y_measured is not None
+    WITH_CONTROL_ESTIMATION =  U_est is not None
 
     N_sim = X_true.shape[0]
     nx = X_true.shape[1]
@@ -295,13 +296,16 @@ def plot_double_pendulum(h, u_max, U, X_true, X_est=None, Y_measured=None, latex
         t_mhe = np.linspace(N_mhe, Tf, N_sim)
 
     plt.subplot(nx+1, 1, 1)
-    plt.step(t[:U.shape[0]], U, color='r')
+    plt.step(t[:U.shape[0]], U, color='r', label='measured')
+    if WITH_CONTROL_ESTIMATION:
+        plt.step(t[:U_est.shape[0]], U_est[:, 0], color='y', label='estimated')
+
     plt.title('closed-loop simulation')
     plt.ylabel('$u$')
     plt.xlabel('$t$')
     plt.hlines(u_max, t[0], t[-2], linestyles='dashed', alpha=0.7)
     plt.hlines(-u_max, t[0], t[-2], linestyles='dashed', alpha=0.7 )
-    plt.ylim([1.2*u_max, -1.2*u_max])
+    plt.ylim([-1.2*u_max, 1.2*u_max])
     plt.grid()
 
     states_lables = ['$q_1$', '$q_2$',
@@ -313,11 +317,13 @@ def plot_double_pendulum(h, u_max, U, X_true, X_est=None, Y_measured=None, latex
 
     for i in range(nx):
         plt.subplot(nx+1, 1, i+2)
-        plt.plot(t, X_true[:,i], label='true')
+        plt.plot(t, X_true[:, i], label='true')
+
 
         if WITH_ESTIMATION:
             plt.plot(t_mhe, X_est[:, i], label='estimated')
-            plt.plot(t, Y_measured[:, i], 'x', label='measured')
+            if i < 2:
+                plt.plot(t, Y_measured[:, i], 'x', label='measured')
 
         plt.ylabel(states_lables[i])
         plt.xlabel('$t$')
