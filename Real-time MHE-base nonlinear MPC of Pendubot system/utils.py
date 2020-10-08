@@ -255,15 +255,17 @@ def plot_quad(h, U_ss, U_del, U, X_true, X_est=None, Y_measured=None, latexify=T
     if os.environ.get('ACADOS_ON_TRAVIS') is None:
         plt.show()
 
-def plot_double_pendulum(h, u_max, U, X_true, X_est=None, U_est=None, Y_measured=None, latexify=True):
+def plot_double_pendulum(h, u_max, U, X_true, X_ref=None,  X_est=None, U_est=None, Y_measured=None,  latexify=True):
     """
     Params:
         h: time step
         u_max: maximum absolute value of u
         U: arrray with shape (N_sim-1, nu) or (N_sim, nu)
         X_true: arrray with shape (N_sim, nx)
+        X_ref: array with shape (N_sim,nx)
         X_est: arrray with shape (N_sim-N_mhe, nx)
         Y_measured: array with shape (N_sim, ny)
+
         latexify: latex style plots
     """
 
@@ -284,6 +286,7 @@ def plot_double_pendulum(h, u_max, U, X_true, X_est=None, U_est=None, Y_measured
 
     WITH_ESTIMATION = X_est is not None and Y_measured is not None
     WITH_CONTROL_ESTIMATION =  U_est is not None
+    WITH_REFERENCE = X_ref is not None
 
     N_sim = X_true.shape[0]
     nx = X_true.shape[1]
@@ -318,7 +321,9 @@ def plot_double_pendulum(h, u_max, U, X_true, X_est=None, U_est=None, Y_measured
     for i in range(nx):
         plt.subplot(nx+1, 1, i+2)
         plt.plot(t, X_true[:, i], label='true')
-
+        if WITH_REFERENCE:
+            if i == 0 or i == 1:
+                plt.plot(t, X_ref[:, i], label='ref')
 
         if WITH_ESTIMATION:
             plt.plot(t_mhe, X_est[:, i], label='estimated')

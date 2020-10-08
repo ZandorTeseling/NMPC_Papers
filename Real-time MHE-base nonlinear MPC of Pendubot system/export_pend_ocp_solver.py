@@ -94,6 +94,7 @@ def export_ocp_solver(model, N, h, Q, R, x0, Taumax=2, COST_MODULE='LS' ):
     # set cost module independent dimensions
     ocp.dims.nx = nx -2
     ocp.dims.nbu = nu
+    ocp.dims.nbx = 1
     ocp.dims.nu = nu
     ocp.dims.np = np
     ocp.dims.N = N
@@ -116,20 +117,24 @@ def export_ocp_solver(model, N, h, Q, R, x0, Taumax=2, COST_MODULE='LS' ):
     # setting bounds
     ocp.constraints.lbu = nmp.array([-Taumax])
     ocp.constraints.ubu = nmp.array([+Taumax])
+    ocp.constraints.ubx =  nmp.array([2*nmp.pi])
+    ocp.constraints.lbx =  nmp.array([-2*nmp.pi])
     ocp.constraints.x0 = x0
+
     ocp.constraints.idxbu = nmp.array([0])
+    ocp.constraints.idxbx = nmp.array([0])
     ocp.parameter_values = nmp.zeros((np, ))
 
     # set QP solver
     ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'
     ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
-    ocp.solver_options.integrator_type = 'ERK'
+    ocp.solver_options.integrator_type = 'IRK'
 
     # set prediction horizon
     ocp.solver_options.tf = Tf
-    # ocp.solver_options.nlp_solver_type = 'SQP'
-    ocp.solver_options.nlp_solver_type = 'SQP_RTI'
-    # ocp.solver_options.nlp_solver_max_iter = 5
+    ocp.solver_options.nlp_solver_type = 'SQP'
+    # ocp.solver_options.nlp_solver_type = 'SQP_RTI'
+    ocp.solver_options.nlp_solver_max_iter = 5
     ocp.solver_options.print_level = 0
 
     return AcadosOcpSolver(ocp, json_file = 'acados_ocp.json')

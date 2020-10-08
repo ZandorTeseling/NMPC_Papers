@@ -79,8 +79,8 @@ ContCost = 1.5e2 * nmp.ones(nu)
 R = nmp.diag(ContCost)
 
 
-b1 = 0.08  # damping coef joint 1 #0.08
-b2 = 0.00001  # damping coef joint 2 #0.00001
+b1 = 0.18  # damping coef joint 1 #0.08
+b2 = 0.05  # damping coef joint 2 #0.00001
 x0 = nmp.array([-1.5707,
                0.0,
                0.0,
@@ -120,6 +120,7 @@ Tsim = 40
 Nsim = int(Tsim/dt)
 
 simX = nmp.zeros((Nsim+1, nx+2))
+simXref = nmp.zeros((Nsim+1, 2))
 simU = nmp.zeros((Nsim, nu))
 
 v_stds = [0.05, 0.05]
@@ -131,8 +132,8 @@ simUest = nmp.zeros((Nsim, 1))
 simX[0, :] = x0
 
 x0Bar = x0
-x0Bar[4] = 0
-x0Bar[5] = 0
+x0Bar[4] = 0.3
+x0Bar[5] = 0.03
 for i in range(Nsim):
     print("Stage: ", i)
     # ~~~~~MHE~~~~~~~
@@ -171,17 +172,20 @@ for i in range(Nsim):
 
     # update trajectory
     t0 = i * dt
+
+
     for j in range(Nmpc):
         tCurr = t0 + j * dt
         if tCurr <= 10:
             # q1 down, q2 up
             if COST_MODULE == 'NLS':
-                acados_ocp_solver.cost_set(j, "y_ref", nmp.array([nmp.cos(-nmp.pi/2), nmp.sin(-nmp.pi/2),
-                                                             nmp.cos(nmp.pi), nmp.sin(nmp.pi),
-                                                             0, 0, 0]))
-                acados_ocp_solver.cost_set(Nmpc, "y_ref", nmp.array([nmp.cos(-nmp.pi / 2), nmp.sin(-nmp.pi / 2),
-                                                                  nmp.cos(nmp.pi), nmp.sin(nmp.pi),
-                                                                  0, 0]))
+                q1 = -nmp.pi/2
+                q2 = nmp.pi
+                refVec =nmp.array([nmp.cos(q1), nmp.sin(q1),
+                                   nmp.cos(q2), nmp.sin(q2),
+                                   0, 0, 0])
+                acados_ocp_solver.cost_set(j, "y_ref", refVec)
+                acados_ocp_solver.cost_set(Nmpc, "y_ref", refVec[:-1])
                 acados_ocp_solver.cost_set(j, "W", nmp.diag([1e2, 1e2, 1e2, 1e2, 1e0, 1e0, 1.5e2]))
             # elif COST_MODULE == 'LS':
             #     acados_ocp_solver.set(j, "y_ref", nmp.array([1.5707, 0, 0, 0, 0]))
@@ -190,12 +194,13 @@ for i in range(Nsim):
         elif 10 < tCurr <= 20:
             # q1 up, q2 down
             if COST_MODULE == 'NLS':
-                acados_ocp_solver.cost_set(j, "y_ref", nmp.array([nmp.cos(1.5707), nmp.sin(1.5707),
-                                                             nmp.cos(nmp.pi), nmp.sin(nmp.pi),
-                                                             0, 0, 0]))
-                acados_ocp_solver.cost_set(Nmpc, "y_ref", nmp.array([nmp.cos(1.5707), nmp.sin(1.5707),
-                                                             nmp.cos(nmp.pi), nmp.sin(nmp.pi),
-                                                             0, 0]))
+                q1 = nmp.pi/2
+                q2 = nmp.pi
+                refVec =nmp.array([nmp.cos(q1), nmp.sin(q1),
+                                   nmp.cos(q2), nmp.sin(q2),
+                                   0, 0, 0])
+                acados_ocp_solver.cost_set(j, "y_ref", refVec)
+                acados_ocp_solver.cost_set(Nmpc, "y_ref", refVec[:-1])
                 acados_ocp_solver.cost_set(j, "W", nmp.diag([1e2, 1e2, 1e2, 1e2, 1e0, 1e0, 1.0e1]))
             # elif COST_MODULE == 'LS':
             #     acados_ocp_solver.set(j, "y_ref",  nmp.array([1.5707, 0, 0, 0, 0]))
@@ -203,12 +208,13 @@ for i in range(Nsim):
         elif 20 < tCurr <= 30:
             # q1 up, q2 up
             if COST_MODULE == 'NLS':
-                acados_ocp_solver.cost_set(j, "y_ref", nmp.array([nmp.cos(1.5707), nmp.sin(1.5707),
-                                                             nmp.cos(0), nmp.sin(0),
-                                                             0, 0, 0]))
-                acados_ocp_solver.cost_set(Nmpc, "y_ref", nmp.array([nmp.cos(1.5707), nmp.sin(1.5707),
-                                                             nmp.cos(0), nmp.sin(0),
-                                                             0, 0]))
+                q1 = nmp.pi / 2
+                q2 = 0
+                refVec = nmp.array([nmp.cos(q1), nmp.sin(q1),
+                                    nmp.cos(q2), nmp.sin(q2),
+                                    0, 0, 0])
+                acados_ocp_solver.cost_set(j, "y_ref", refVec)
+                acados_ocp_solver.cost_set(Nmpc, "y_ref", refVec[:-1])
                 acados_ocp_solver.cost_set(j, "W", nmp.diag([1e2, 1e2, 1e2, 1e2, 1e0, 1e0, 4.0e1]))
                 # acados_ocp_solver.cost_set(Nmpc, "W", nmp.diag([1e2, 1e2, 1e2, 1e2, 1e1, 1e1]))
             # elif COST_MODULE == 'LS':
@@ -217,12 +223,13 @@ for i in range(Nsim):
         elif 30 < tCurr <= 40:
             # q1 down, q2 down
             if COST_MODULE == 'NLS':
-                acados_ocp_solver.cost_set(j, "y_ref", nmp.array([nmp.cos(-1.5707), nmp.sin(-1.5707),
-                                                             nmp.cos(0), nmp.sin(0),
-                                                             0, 0, 0]))
-                acados_ocp_solver.cost_set(Nmpc, "y_ref", nmp.array([nmp.cos(-1.5707), nmp.sin(-1.5707),
-                                                             nmp.cos(0), nmp.sin(0),
-                                                             0, 0]))
+                q1 = -nmp.pi / 2
+                q2 = 0
+                refVec = nmp.array([nmp.cos(q1), nmp.sin(q1),
+                                    nmp.cos(q2), nmp.sin(q2),
+                                    0, 0, 0])
+                acados_ocp_solver.cost_set(j, "y_ref", refVec)
+                acados_ocp_solver.cost_set(Nmpc, "y_ref", refVec[:-1])
                 acados_ocp_solver.cost_set(j, "W", nmp.diag([1e2, 1e2, 1e2, 1e2, 1e0, 1e0, 3.0e1]))
                 # acados_ocp_solver.cost_set(Nmpc, "W", nmp.diag([1e2, 1e2, 1e2, 1e2, 1e0, 1e0]))
             # elif COST_MODULE == 'LS':
@@ -230,7 +237,7 @@ for i in range(Nsim):
 
 
     status = acados_ocp_solver.solve()
-    if status != 0:
+    if status != 0 and status != 2:
         raise Exception('acados acados_ocp_solver returned status {}. Exiting.'.format(status))
 
     simU[i, :] = acados_ocp_solver.get(0, "u")
@@ -241,8 +248,9 @@ for i in range(Nsim):
     if status != 0:
         raise Exception('acados integrator returned status {}. Exiting.'.format(status))
 
+    simXref[i, :] = nmp.array([q1,q2])
     simX[i + 1, :] = acados_integrator.get("x") #True state.
 
 # plot results
-plot_double_pendulum(dt, uMax, simU, simX, simXest, simUest, simY)
+plot_double_pendulum(dt, uMax, simU, simX, simXref, simXest, simUest, simY)
 

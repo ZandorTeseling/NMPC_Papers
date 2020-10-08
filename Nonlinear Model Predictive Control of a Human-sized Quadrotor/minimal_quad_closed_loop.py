@@ -245,5 +245,5 @@ print("q\n",qtest)
 R = QuattoR(qtest)
 print("RMat:\n", R)
 # plot results
-# plot_quad(dt, uSS, uDel, simU, simX)
+plot_quad(dt, uSS, uDel, simU, simX)
 
