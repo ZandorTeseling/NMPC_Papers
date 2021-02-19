@@ -42,9 +42,20 @@ sim = AcadosSim()
 # export model 
 model = export_quad_ode_model()
 
+#Parameters
+rho =   1.225
+A =     0.1
+Cl =    0.125
+Cd =    0.075
+m =     10.0
+g =     9.81
+J3 =    0.25
+J2 =    J3*4
+J1 =    J3*4
+p = np.array([rho, A, Cl, Cd, m, g, J1, J2, J3])
 # set model_name 
 sim.model = model
-
+sim.parameter_values = p
 Tf = 2.5
 dt = 0.01
 nx = model.x.size()[0]
@@ -66,7 +77,7 @@ acados_integrator = AcadosSimSolver(sim)
 
 
 Nsim = int(Tf/dt)
-uMax = 40 #rad/s control input max
+uSS = 39.99
 simX = np.ndarray((Nsim+1, nx))
 simU = np.ndarray((Nsim, nu))
 
@@ -77,17 +88,7 @@ u0 = np.zeros((nu))
 
 simX[0,:] = x0
 
-#Parameters
-rho =   1.225
-A =     0.1
-Cl =    0.125
-Cd =    0.075
-m =     10.0
-g =     9.81
-J3 =    0.25
-J2 =    J3*4
-J1 =    J3*4
-p = np.array([rho, A, Cl, Cd, m, g, J1, J2, J3])
+
 acados_integrator.set("p", p)
 
 for i in range(Nsim):
@@ -98,8 +99,11 @@ for i in range(Nsim):
     #u0 = np.array([10,0,10,0]) #Positive yaw.
     #u0 = np.array([0,10,0,10])  # Negative yaw.
 
-    # u0 = np.array([10, np.sqrt(10*10*0.5), 0, np.sqrt(10*10*0.5)]) #Positive pitch.
-    u0 = np.array([0, np.sqrt(10 * 10 * 0.5), 10, np.sqrt(10 * 10 * 0.5)])  # Negative pitch.
+    u0 = np.array([uSS, uSS + np.sqrt(10 * 10 * 0.5), uSS, uSS + np.sqrt(10 * 10 * 0.5)])  # Positive yaw.
+    u0 = np.array([uSS-5, uSS, uSS+5, uSS])  # Negatice yaw.
+
+    # u0 = np.array([uSS, uSS + np.sqrt(10 * 10 * 0.5), uSS, uSS+np.sqrt(10 * 10 * 0.5)]) #Positive pitch.
+    u0 = np.array([uSS+0, uSS+np.sqrt(10 * 10 * 0.5), uSS+10, uSS+np.sqrt(10 * 10 * 0.5)])  # Negative pitch.
 
     # u0 = np.array([np.sqrt(10*10*0.5), 10, np.sqrt(10*10*0.5), 0]) #Positive roll.
     # u0 = np.array([np.sqrt(10 * 10 * 0.5), 0, np.sqrt(10 * 10 * 0.5),10])  # Negative roll.
@@ -133,6 +137,7 @@ rpy[0, 2] = 0
 resQuat = YPRtoQuat(rpy)
 print(resQuat)
 # plot results
-plot_quad(dt, uMax, simU, simX)
+uDel = 8
+plot_quad(dt, uSS, uDel, simU, simX)
 
 

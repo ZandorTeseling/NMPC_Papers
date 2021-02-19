@@ -34,6 +34,7 @@
 from acados_template import AcadosSim, AcadosSimSolver
 from export_pend_ode_model import export_pend_ode_model
 from utils import *
+from casadi import *
 import numpy as nmp
 import matplotlib.pyplot as plt
 
@@ -42,20 +43,34 @@ sim = AcadosSim()
 # export model 
 model = export_pend_ode_model()
 
-# set model_name 
-sim.model = model
+#Parameters
+# set up parameters
+m1 = 0.265  # mass link 1
+m2 = 0.226  # mass link 2
+l1 = 0.206  # length link 1
+l2 = 0.298  # length link 2
+lc1 = 0.107  # cm link 1
+lc2 = 0.133  # cm link 2
+b1 = 0.035  # damping coef joint 1
+b2 = 0.045  # damping coef joint 2
+g = 9.81
 
+# set model_name
+sim.model = model
+sim.parameter_values = np.array([m1, m2, l1, l2, lc1, lc2, g])
 Tf = 10.0
 dt = 0.01
 nx = model.x.size()[0]
 nu = model.u.size()[0]
+np = model.p.size()[0]
 
 print("StateSize:" ,nx)
 print("ControlSize:" ,nu)
-
+print("ParamSize:" ,np)
 # set simulation time
 sim.solver_options.T = dt
 # set options
+sim.solver_options.integrator_type = 'ERK'
 sim.solver_options.num_stages = 4
 sim.solver_options.num_steps = 3
 sim.solver_options.newton_iter = 3 # for implicit integrator
@@ -72,17 +87,6 @@ simU = nmp.ndarray((Nsim, nu))
 x0 = nmp.zeros((nx))
 u0 = nmp.zeros((nu))
 
-#Parameters
-# set up parameters
-m1 = 0.265  # mass link 1
-m2 = 0.226  # mass link 2
-l1 = 0.206  # length link 1
-l2 = 0.298  # length link 2
-lc1 = 0.107  # cm link 1
-lc2 = 0.133  # cm link 2
-b1 = 0.35  # damping coef joint 1
-b2 = 0.45  # damping coef joint 2
-g = 9.81
 
 x0[4] = b1
 x0[5] = b2

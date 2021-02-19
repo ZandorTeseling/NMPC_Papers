@@ -38,7 +38,7 @@ import scipy.linalg
 from utils import plot_quad
 
 
-COST_MODULE = 'NLS' # 'LS', 'EXTERNAL'
+COST_MODULE =  'NLS'#, 'EXTERNAL'
 USE_SLACK = 1
 
 # create ocp object to formulate the OCP
@@ -72,6 +72,9 @@ if COST_MODULE == 'LS':
 elif COST_MODULE == 'NLS':
     ny = model.cost_y_expr.size()[0]
     ny_e = model.cost_y_expr_e.size()[0]
+    print("Ny:", ny)
+    print("Ny:", ny_e)
+
     ocp.dims.ny = ny
     ocp.dims.ny_e = ny_e
 
@@ -99,25 +102,27 @@ if COST_MODULE == 'LS':
     #w1 w2 w3
     R = 2 * nmp.diag([1e-4, 1e-4, 1e-4])
     ocp.cost.yref  = nmp.zeros((ocp.dims.ny, ))
-    ocp.cost.yref[0] = 1
+    ocp.cost.yref[0] = 0.707
+    ocp.cost.yref[3] = -0.707
     ocp.cost.yref_e = nmp.zeros((ocp.dims.ny_e, ))
-    ocp.cost.yref_e[0] = 1
+    ocp.cost.yref_e[0] = 0.707
+    ocp.cost.yref_e[3] = -0.707
 elif COST_MODULE == 'NLS':
-    # r p y q0 q1 q2 q3 omegx omegy omegz
-    Q = 2*nmp.diag([1e-3, 1e-3, 1e-3, 1e3, 1e3, 1e3, 1e3, 1e-4, 1e-4, 1e-4])
+    # r p y omegx omegy omegz
+    Q = 2*nmp.diag([1e5, 1e5, 1e5, 1e-1, 1e-1, 1e-1])
     #dw1 dw2 dw3
-    R = 2*nmp.diag([1e-8, 1e-8, 1e-8])
+    R = 2*nmp.diag([1e-3, 1e-3, 1e-3])
     ocp.cost.yref  = nmp.zeros((ocp.dims.ny, ))
-    ocp.cost.yref[3] = 1
+    ocp.cost.yref[2] =  -1.5708
     ocp.cost.yref_e = nmp.zeros((ocp.dims.ny_e, ))
-    ocp.cost.yref_e[3] = 1
+    ocp.cost.yref_e[2] = -1.5708
 
 # cost on slack variable
 if USE_SLACK:
-    ocp.cost.Zl = nmp.array([1e2])
-    ocp.cost.Zu = nmp.array([1e2])
-    ocp.cost.zl = nmp.array([1e2])
-    ocp.cost.zu = nmp.array([1e2])
+    ocp.cost.Zl = nmp.array([1e3])
+    ocp.cost.Zu = nmp.array([1e3])
+    ocp.cost.zl = nmp.array([1e3])
+    ocp.cost.zu = nmp.array([1e3])
 
 ocp.cost.W_e = Q
 ocp.cost.W = scipy.linalg.block_diag(Q, R)
@@ -132,9 +137,9 @@ ocp.constraints.x0 = nmp.array([0.707, 0.707, 0.0, 0.0, 0.0, 0.0, 0.0])
 ocp.constraints.constr_type = 'BGH'
 
 
-omegMax = 10.0
-ocp.constraints.lbu = nmp.array([-0.5*omegMax, -0.75*omegMax, -omegMax])
-ocp.constraints.ubu = nmp.array([0.5*omegMax, 0.75*omegMax, omegMax])
+omegMax = 20.0
+ocp.constraints.lbu = nmp.array([-0.8*omegMax, -0.9*omegMax, -omegMax])
+ocp.constraints.ubu = nmp.array([0.8*omegMax, 0.9*omegMax, omegMax])
 ocp.constraints.idxbu = nmp.array([0, 1, 2])
 
 # nonlinear quaternion constraint
@@ -142,8 +147,8 @@ if USE_SLACK:
     ocp.constraints.lh = nmp.array([1.0])
     ocp.constraints.uh = nmp.array([1.0])
     # slack for nonlinear quaternion
-    ocp.constraints.lsh = nmp.array([-1e-2])
-    ocp.constraints.ush = nmp.array([1e-2])
+    ocp.constraints.lsh = nmp.array([1e-5])
+    ocp.constraints.ush = nmp.array([1e-5])
     ocp.constraints.idxsh = nmp.array([0])
 
 

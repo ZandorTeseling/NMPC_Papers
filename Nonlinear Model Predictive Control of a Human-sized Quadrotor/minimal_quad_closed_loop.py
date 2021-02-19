@@ -39,7 +39,7 @@ import scipy.linalg
 
 
 COST_MODULE = 'NLS'
-USE_QUAT_SLACK = 0
+USE_QUAT_SLACK = 1
 # create ocp object to formulate the OCP
 ocp = AcadosOcp()
 
@@ -199,6 +199,7 @@ simX = nmp.zeros((Nsim+1, nx))
 simU = nmp.zeros((Nsim, nu))
 
 simX[0, :] = x0
+
 
 for i in range(Nsim):
     # solve ocp

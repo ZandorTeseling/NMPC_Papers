@@ -39,9 +39,8 @@ def export_pend_mhe_solver(model, N, h, Q, Q0, R):
     print("R:", R)
     # create render arguments
     ocp_mhe = AcadosOcp()
-
     ocp_mhe.model = model
-    ocp_mhe.model.name = "pend_mhe"
+
     #q1 q2 dq1 dq2 b1 b2
     nx = model.x.size()[0]
     #tau1
@@ -101,9 +100,9 @@ def export_pend_mhe_solver(model, N, h, Q, Q0, R):
     # set prediction horizon
     ocp_mhe.solver_options.tf = N * h
 
-    # ocp_mhe.solver_options.nlp_solver_type = 'SQP'
+    #ocp_mhe.solver_options.nlp_solver_type = 'SQP'
     ocp_mhe.solver_options.nlp_solver_type = 'SQP_RTI'
-    # ocp_mhe.solver_options.nlp_solver_max_iter = 50
+    #ocp_mhe.solver_options.nlp_solver_max_iter = 50
 
     acados_mhe_solver = AcadosOcpSolver(ocp_mhe, json_file='acados_mhe.json')
 

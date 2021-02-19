@@ -42,7 +42,6 @@ def export_ocp_solver(model, N, h, Q, R, x0, Taumax=2, COST_MODULE='LS' ):
 
     # set model
     ocp.model = model
-    ocp.model.name  = "pend_ocp"
 
     Tf = N*h
     nx = model.x.size()[0]

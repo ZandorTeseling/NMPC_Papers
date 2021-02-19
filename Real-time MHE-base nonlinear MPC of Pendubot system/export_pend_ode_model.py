@@ -33,31 +33,31 @@
 
 from acados_template import AcadosModel
 from casadi import *
-
+import numpy as np
 def export_pend_ode_model():
 
     model_name = 'pend_ode'
 
     # set up states & controls
-    q1      = SX.sym('q1')
-    q2      = SX.sym('q2')
-    dq1  = SX.sym('dq1')
-    dq2  = SX.sym('dq2')
-    b1   = SX.sym('b1')
-    b2 = SX.sym('b2')
+    q1  = SX.sym('q1')
+    q2  = SX.sym('q2')
+    dq1 = SX.sym('dq1')
+    dq2 = SX.sym('dq2')
+    b1  = SX.sym('b1')
+    b2  = SX.sym('b2')
     x = vertcat(q1, q2, dq1, dq2, b1, b2)
 
     # controls
     tau1 = SX.sym('tau1')
     tau = vertcat(tau1, 0)
 
-    u = tau1
+    u = vertcat(tau1)
     
     # xdot
-    q1_dot      = SX.sym('q1_dot')
-    q2_dot      = SX.sym('q2_dot')
-    dq1_dot  = SX.sym('dq1_dot')
-    dq2_dot  = SX.sym('dq2_dot')
+    q1_dot  = SX.sym('q1_dot')
+    q2_dot  = SX.sym('q2_dot')
+    dq1_dot = SX.sym('dq1_dot')
+    dq2_dot = SX.sym('dq2_dot')
     b1_dot  = SX.sym('b1_dot')
     b2_dot  = SX.sym('b2_dot')
 
@@ -68,16 +68,16 @@ def export_pend_ode_model():
 
     # parameters
     # set up parameters
-    m1 = SX.sym('m1')   # mass link 1
-    m2 = SX.sym('m2')   # mass link 2
-    l1 = SX.sym('l1')   # length link 1
-    l2 = SX.sym('l2')   # length link 2
+    m1  = SX.sym('m1')   # mass link 1
+    m2  = SX.sym('m2')   # mass link 2
+    l1  = SX.sym('l1')   # length link 1
+    l2  = SX.sym('l2')   # length link 2
     lc1 = SX.sym('lc1')  # cm link 1
     lc2 = SX.sym('lc2')  # cm link 2
-    g = SX.sym('g')
+    g   = SX.sym('g')
 
-    I1 = 1 / 3 * m1 * l1 * l1
-    I2 = 1 / 3 * m2 * l2 * l2
+    I1 = (1 / 3)* m1 * l1 * l1
+    I2 = (1 / 3)* m2 * l2 * l2
     p = vertcat(m1, m2, l1, l2, lc1, lc2, g)
 
     # system dynamics.

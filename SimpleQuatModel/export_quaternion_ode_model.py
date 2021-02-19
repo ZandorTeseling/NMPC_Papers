@@ -107,8 +107,8 @@ def export_quaternion_ode_model():
     Eul[2, 0] = arctan2(2 * (q0*q3 + q1*q2), 1 - 2 * (q2**2 + q3**2))
     quat_to_eul = Function("quat_to_eul", [x, u], [Eul])
 
-    model.cost_y_expr = vertcat(Eul, x, u)  #: CasADi expression for nonlinear least squares
-    model.cost_y_expr_e = vertcat(Eul, x)  #: CasADi expression for nonlinear least squares, terminal
+    model.cost_y_expr = vertcat(Eul, x[4:, :], u)  #: CasADi expression for nonlinear least squares
+    model.cost_y_expr_e = vertcat(Eul, x[4:, :])  #: CasADi expression for nonlinear least squares, terminal
 
     model.con_h_expr = q0*q0 + q1*q1 + q2*q2 + q3*q3
 

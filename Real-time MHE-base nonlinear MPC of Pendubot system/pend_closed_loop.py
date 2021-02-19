@@ -31,12 +31,13 @@
 # POSSIBILITY OF SUCH DAMAGE.;
 #
 
-from acados_template import AcadosOcp, AcadosOcpSolver, AcadosSim, AcadosSimSolver
+from acados_template import AcadosOcp, AcadosOcpSolver, AcadosSim, AcadosSimSolver, AcadosModel
 from export_pend_ocp_solver import export_ocp_solver
 from export_pend_ode_model import export_pend_ode_model
 from export_pend_mhe_solver import export_pend_mhe_solver
 from utils import *
 import numpy as nmp
+from casadi import SX
 import scipy.linalg
 
 #NMPC controller cost model
@@ -44,15 +45,15 @@ COST_MODULE = 'NLS'
 
 # set model
 model = export_pend_ode_model()
-# model parameters
-m1 = 0.265  # mass link 1
-m2 = 0.226  # mass link 2
-l1 = 0.206  # length link 1
-l2 = 0.298  # length link 2
-lc1 = 0.107  # cm link 1
-lc2 = 0.133  # cm link 2
-g = 9.81
-p = nmp.array([m1, m2, l1, l2, lc1, lc2, g])
+
+ocp_model = export_pend_ode_model()
+ocp_model.name = 'pend_ocp'
+
+mhe_model = export_pend_ode_model()
+mhe_model.name = 'pend_mhe'
+
+sim_model = export_pend_ode_model()
+sim_model.name = 'pend_sim'
 
 
 #################################
@@ -65,9 +66,15 @@ dt = Tf/Nmpc
 
 nx = model.x.size()[0] - 2
 nu = model.u.size()[0]
-# nz  = model.z.size()[0]
-np = model.p.size()[0]
-
+# model parameters
+m1 = 0.265  # mass link 1
+m2 = 0.226  # mass link 2
+l1 = 0.206  # length link 1
+l2 = 0.298  # length link 2
+lc1 = 0.107  # cm link 1
+lc2 = 0.133  # cm link 2
+g = 9.81
+p = nmp.array([m1, m2, l1, l2, lc1, lc2, g])
 
 if COST_MODULE == 'NLS':
     # cos(q1) sin(q1) cos(q2) sin(q2) dq1 dq2 u
@@ -79,8 +86,8 @@ ContCost = 1.5e2 * nmp.ones(nu)
 R = nmp.diag(ContCost)
 
 
-b1 = 0.18  # damping coef joint 1 #0.08
-b2 = 0.05  # damping coef joint 2 #0.00001
+b1 = 0.09  # damping coef joint 1 #0.08
+b2 = 0.03  # damping coef joint 2 #0.00001
 x0 = nmp.array([-1.5707,
                0.0,
                0.0,
@@ -89,24 +96,28 @@ x0 = nmp.array([-1.5707,
                b2    # damping coef joint 2
                 ])
 uMax = 2
-acados_ocp_solver = export_ocp_solver(model, Nmpc, dt, Q, R, x0, uMax, COST_MODULE)
+
+
+acados_ocp_solver = export_ocp_solver(ocp_model, Nmpc, dt, Q, R, x0, uMax, COST_MODULE)
+
 
 #################################
 ### MHE
 #################################
 Nmhe = 50
-Qe = nmp.diag((2, 2))
+Qe = nmp.diag((1, 1))
 Re = nmp.array(0.0001)
 # Q0e = 10* nmp.eye(nx+2)
 #x = q1 q2 dq1 dq2 b1 b2
 Q0e = nmp.diag((1e0, 1e0, 2e0, 2e0, 1e3, 1e4))
-acados_mhe_solver = export_pend_mhe_solver(model, Nmhe, dt, Qe, Q0e, Re)
+acados_mhe_solver = export_pend_mhe_solver(mhe_model, Nmhe, dt, Qe, Q0e, Re)
 
 #################################
 ### Dynamics Simulation
 #################################
 sim = AcadosSim()
-sim.model = model
+sim.model = sim_model
+sim.parameter_values = nmp.array([m1, m2, l1, l2, lc1, lc2, g])
 # set simulation time
 sim.solver_options.T = dt
 # set options
@@ -114,9 +125,8 @@ sim.solver_options.num_stages = 4
 sim.solver_options.num_steps = 6
 
 acados_integrator = AcadosSimSolver(sim)
-acados_integrator.set("p", p)
 
-Tsim = 40
+Tsim = 10
 Nsim = int(Tsim/dt)
 
 simX = nmp.zeros((Nsim+1, nx+2))
@@ -132,8 +142,8 @@ simUest = nmp.zeros((Nsim, 1))
 simX[0, :] = x0
 
 x0Bar = x0
-x0Bar[4] = 0.3
-x0Bar[5] = 0.03
+x0Bar[4] = x0[4] + nmp.random.normal(0,0.05,1)
+x0Bar[5] = x0[5] + nmp.random.normal(0,0.05,1)
 for i in range(Nsim):
     print("Stage: ", i)
     # ~~~~~MHE~~~~~~~
@@ -168,7 +178,8 @@ for i in range(Nsim):
     acados_ocp_solver.set(0, "ubx", x0)
     # update params
     for j in range(Nmpc):
-        acados_ocp_solver.set(j, "p", p)
+         acados_ocp_solver.set(j, "p", p)
+
 
     # update trajectory
     t0 = i * dt
