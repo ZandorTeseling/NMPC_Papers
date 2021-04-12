@@ -36,7 +36,7 @@ from casadi import *
 import numpy as np
 def export_sine_wave_mhe_ode_model():
 
-    model_name = 'sine_wave_ode'
+    model_name = 'sine_wave_mhe_ode'
 
     # set up states & controls
     s     = SX.sym('s')

@@ -184,6 +184,5 @@ plt.grid()
 plt.legend(loc="upper left")
 plt.show(block = False)
 
-
 plt.show()
 

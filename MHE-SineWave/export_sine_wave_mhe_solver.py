@@ -80,8 +80,8 @@ def export_sine_wave_mhe_solver(model, N, h, Q, Q0, R):
 
     # set constraints for state/parameters
     ocp_mhe.constraints.ubx = nmp.array([2, 10])
-    ocp_mhe.constraints.lbx = nmp.array([0, 0])
-    ocp_mhe.constraints.idxbx = nmp.array([1, 2]) #amp freq trend
+    ocp_mhe.constraints.lbx = nmp.array([-2, 0])
+    ocp_mhe.constraints.idxbx = nmp.array([1, 2]) #amp freq
 
     # set QP solver
     # ocp_mhe.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'
