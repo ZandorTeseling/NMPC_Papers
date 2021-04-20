@@ -29,3 +29,19 @@ Path-<path_to_anaconda3>/envs/NMPC_Papers/bin/python
 ENV Vars:  
 ACADOS_SOURCE_DIR=<path_to_git_folder>/NMPC_Papers/3rdParty/acados/  
 LD_LIBRARY_PATH=<path_to_git_folder>/NMPC_Papers/3rdParty/acados/lib  
+
+
+Managing Conda Env and set up to use pycharm
+
+#CLI
+1. conda create --name NMPC_Papers  
+2. Note path for env  <path_to_anaconda3>/envs/NMPC_Papers  
+3. conda activate NMPC_Papers  
+4. Follow acados build/install instructions  
+5. <path_to_git_folder>/NMPC_Papers/3rdParty/acados$ pip install  ./interfaces/acados_template/   
+#PyCharm  
+6. File->Settings->PythonInterreters->Add Python Interpreter (With following settings)  
+7. Select: New Environment  
+8. Location: <path_to_anaconda3>/envs/NMPC_Papers>   
+9. Python Version: 3.9  
+10. Conda Executable: <path_to_anaconda3>/bin/conda  
