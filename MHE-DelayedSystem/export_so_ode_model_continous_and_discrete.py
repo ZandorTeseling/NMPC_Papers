@@ -60,7 +60,7 @@ def export_so_ode_ct():
     # set up parameters
     zeta = SX.sym('zeta')   # zeta
     ts   = SX.sym('ts')  # ts
-    Kp = SX.sym('Kp')  # Kp
+    Kp   = SX.sym('Kp')  # Kp
 
     p = vertcat(zeta, ts, Kp)
 
@@ -93,7 +93,7 @@ def export_so_ode_dt_rk4(dT):
     x = model.x
     u = model.u
     nx = x.size()[0]
-
+    model.name = 'second_order_ode_dt'
     ode = Function('ode', [x, u], [model.f_expl_expr])
     # set up RK4
     k1 = ode(x, u)

@@ -38,25 +38,26 @@ from casadi import *
 import numpy as nmp
 import matplotlib.pyplot as plt
 
-dt = 0.05
+dt = 0.01
 Tf = 5.0
 N = int(Tf/dt)
-
 
 sim_ct = AcadosSim()
 sim_dt = AcadosSim()
 # export model
 model_ct = export_so_ode_ct()
 zeta = 1.0 #Critically Damped
-ts = 0.3 #Time Constant
-Kp = 1.0 #Steady State Gain
+ts   = 0.3 #Time Constant
+Kp   = 1.0 #Steady State Gain
 
 
 model_dt = export_so_ode_dt_rk4(dt)
 
 sim_ct.model = model_ct
+sim_dt.model = model_dt
 
 sim_ct.parameter_values = np.array([zeta, ts, Kp])
+sim_dt.parameter_values = np.array([zeta, ts, Kp])
 # set simulation time
 sim_ct.solver_options.T = dt
 # set options
@@ -64,17 +65,22 @@ sim_ct.solver_options.integrator_type = 'ERK'
 sim_ct.solver_options.num_stages = 4
 sim_ct.solver_options.num_steps = 3
 sim_ct.solver_options.newton_iter = 3 # for implicit integrator
+
+
+sim_dt.solver_options.integrator_type = 'DISCRETE'
+sim_dt.solver_options.T = dt
 # create
-acados_integrator = AcadosSimSolver(sim_ct) #Used to mock data for testing mhe
+acados_integrator_ct = AcadosSimSolver(sim_ct) #Used to simulate continious time ode
+acados_integrator_dt = AcadosSimSolver(sim_dt) #Used to simulate discrete time ode
 
 nx = model_ct.x.size()[0]
 nu = model_ct.u.size()[0]
 u0 = nmp.zeros(nu)
 
 #Storage structs
-simX = nmp.ndarray((N+1, nx))
-simU = nmp.ndarray((N, nu))
-simY = nmp.ndarray((N+1, 1))
+simX = nmp.zeros((N+1, nx))
+simU = nmp.zeros((N, nu))
+simY = nmp.zeros((N+1, 1))
 
 #inital state/parameters
 x0 = nmp.zeros(nx)
@@ -82,27 +88,24 @@ x0 = nmp.zeros(nx)
 ########################
 # ode used to generate data to test.
 ########################
-simX[0,:] = x0
+simX[0, :] = x0
 v_stds = [0.05]
 
-
-Tstep = 0.8
 simU[round(0.8/dt):, 0] = 1
 
 for i in range(N):
     # set initial state
-    u0 = simU[i,:]
+    u0 = simU[i, :]
     p = nmp.array([zeta, ts, Kp])
-    acados_integrator.set("p", p)
-    acados_integrator.set("x", x0)
-    acados_integrator.set("u", u0)
+    acados_integrator_ct.set("p", p)
+    acados_integrator_ct.set("x", x0)
+    acados_integrator_ct.set("u", u0)
     # solve
-    status = acados_integrator.solve()
+    status = acados_integrator_ct.solve()
     # get solution
-    x0 = acados_integrator.get("x")
+    x0 = acados_integrator_ct.get("x")
 
-    simX[i+1,:]  = x0
-    # C = [1; 0] Measurement model
+    simX[i+1, :] = x0
     simY[i+1, :] = x0[0] + nmp.transpose(nmp.diag(v_stds) @ nmp.random.standard_normal((1, 1)))
     if status != 0:
         raise Exception('acados returned status {}. Exiting.'.format(status))
@@ -113,6 +116,7 @@ for i in range(N):
 
 plt.figure(1)
 plt.plot(np.linspace(0, Tf, N+1), simX[:, 0], label="true")
+plt.plot(np.linspace(0, Tf, N), simU[:, 0], label="input")
 plt.plot(np.linspace(0, Tf, N+1), simY[:, 0], 'x', label="measured")
 
 plt.ylabel("[-]")
