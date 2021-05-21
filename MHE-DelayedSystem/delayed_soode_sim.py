@@ -38,7 +38,7 @@ from casadi import *
 import numpy as nmp
 import matplotlib.pyplot as plt
 
-dt = 0.01
+dt = 0.05
 Tf = 5.0
 N = int(Tf/dt)
 
@@ -60,22 +60,24 @@ sim_ct.parameter_values = np.array([zeta, ts, Kp])
 sim_dt.parameter_values = np.array([zeta, ts, Kp])
 # set simulation time
 sim_ct.solver_options.T = dt
+sim_dt.solver_options.T = dt
 # set options
 sim_ct.solver_options.integrator_type = 'ERK'
 sim_ct.solver_options.num_stages = 4
 sim_ct.solver_options.num_steps = 3
 sim_ct.solver_options.newton_iter = 3 # for implicit integrator
 
-
 sim_dt.solver_options.integrator_type = 'DISCRETE'
-sim_dt.solver_options.T = dt
 # create
-acados_integrator_ct = AcadosSimSolver(sim_ct) #Used to simulate continious time ode
-acados_integrator_dt = AcadosSimSolver(sim_dt) #Used to simulate discrete time ode
+acados_integrator_ct = AcadosSimSolver(sim_ct) #Used to mock data for testing mhe
+acados_integrator_dt = AcadosSimSolver(sim_dt) #Used to mock data for testing mhe
+
 
 nx = model_ct.x.size()[0]
 nu = model_ct.u.size()[0]
 u0 = nmp.zeros(nu)
+
+
 
 #Storage structs
 simX = nmp.zeros((N+1, nx))
@@ -100,6 +102,14 @@ for i in range(N):
     acados_integrator_ct.set("p", p)
     acados_integrator_ct.set("x", x0)
     acados_integrator_ct.set("u", u0)
+
+    acados_integrator_dt.set("p", p)
+    acados_integrator_dt.set("x", x0)
+    acados_integrator_dt.set("u", u0)
+
+    status = acados_integrator_dt.solve()
+    if status != 0:
+        raise Exception('acados returned status {}. Exiting.'.format(status))
     # solve
     status = acados_integrator_ct.solve()
     # get solution

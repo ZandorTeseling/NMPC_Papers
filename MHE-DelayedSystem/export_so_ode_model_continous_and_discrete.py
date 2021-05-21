@@ -90,6 +90,7 @@ def export_so_ode_ct():
 def export_so_ode_dt_rk4(dT):
 
     model = export_so_ode_ct()
+    model.name = model_name = 'second_order_ode_dt_rk4'
     x = model.x
     u = model.u
     nx = x.size()[0]
