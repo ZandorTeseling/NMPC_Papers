@@ -46,7 +46,7 @@ sim_ct = AcadosSim()
 sim_dt = AcadosSim()
 # export model
 model_ct = export_so_ode_ct()
-zeta = 1.0 #Critically Damped
+zeta = 0.7 #Critically Damped
 ts   = 0.3 #Time Constant
 Kp   = 1.0 #Steady State Gain
 
@@ -74,6 +74,7 @@ acados_integrator_dt = AcadosSimSolver(sim_dt) #Used to mock data for testing mh
 
 
 nx = model_ct.x.size()[0]
+nx_dt = model_dt.x.size()[0]
 nu = model_ct.u.size()[0]
 u0 = nmp.zeros(nu)
 
@@ -81,16 +82,19 @@ u0 = nmp.zeros(nu)
 
 #Storage structs
 simX = nmp.zeros((N+1, nx))
+simXdisc = nmp.zeros((N+1, nx_dt))
 simU = nmp.zeros((N, nu))
 simY = nmp.zeros((N+1, 1))
 
 #inital state/parameters
 x0 = nmp.zeros(nx)
+x0disc = nmp.zeros(nx_dt)
 
 ########################
 # ode used to generate data to test.
 ########################
 simX[0, :] = x0
+simXdisc[0, :] = x0disc
 v_stds = [0.05]
 
 simU[round(0.8/dt):, 0] = 1
@@ -104,28 +108,35 @@ for i in range(N):
     acados_integrator_ct.set("u", u0)
 
     acados_integrator_dt.set("p", p)
-    acados_integrator_dt.set("x", x0)
+    acados_integrator_dt.set("x", x0disc)
     acados_integrator_dt.set("u", u0)
 
     status = acados_integrator_dt.solve()
     if status != 0:
         raise Exception('acados returned status {}. Exiting.'.format(status))
-    # solve
+    # get solution
+    x0disc = acados_integrator_dt.get("x")
+
     status = acados_integrator_ct.solve()
+    if status != 0:
+        raise Exception('acados returned status {}. Exiting.'.format(status))
     # get solution
     x0 = acados_integrator_ct.get("x")
 
-    simX[i+1, :] = x0
+
+    simXdisc[i + 1, :] = x0disc
+    simX[i + 1, :]     = x0
+
     simY[i+1, :] = x0[0] + nmp.transpose(nmp.diag(v_stds) @ nmp.random.standard_normal((1, 1)))
-    if status != 0:
-        raise Exception('acados returned status {}. Exiting.'.format(status))
+
 
 
 
 
 
 plt.figure(1)
-plt.plot(np.linspace(0, Tf, N+1), simX[:, 0], label="true")
+plt.plot(np.linspace(0, Tf, N+1), simX[:, 0], label="true no delay")
+plt.step(np.linspace(0, Tf, N+1), simXdisc[:, 0], label="true disc delayed")
 plt.plot(np.linspace(0, Tf, N), simU[:, 0], label="input")
 plt.plot(np.linspace(0, Tf, N+1), simY[:, 0], 'x', label="measured")
 

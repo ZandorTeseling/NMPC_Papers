@@ -84,26 +84,54 @@ def export_so_ode_ct():
 
     return model
 
-
-
-
 def export_so_ode_dt_rk4(dT):
+    inputDelay = 0.553
 
     model = export_so_ode_ct()
     model.name = model_name = 'second_order_ode_dt_rk4'
+
     x = model.x
     u = model.u
-    nx = x.size()[0]
-    model.name = 'second_order_ode_dt'
-    ode = Function('ode', [x, u], [model.f_expl_expr])
-    # set up RK4
-    k1 = ode(x, u)
-    k2 = ode(x+dT/2*k1, u)
-    k3 = ode(x+dT/2*k2, u)
-    k4 = ode(x+dT*k3, u)
-    xf = x + dT/6 * (k1 + 2*k2 + 2*k3 + k4)
+    u_in = SX.sym('u_in')
 
+    Nx = x.size()[0]
+
+    Naug = int(floor(inputDelay/dT)) #Number of control input propegation delay
+    u_aug = SX.sym('u_aug',Naug)
+    Aaug = SX.zeros(Naug, Naug + Nx)
+    #Fill superdiagonal with 1
+    for i in range(0, Naug-1):
+        for j in range(Nx, Naug+Nx):
+            if(j-Nx == i+1):
+                Aaug[i,j] = 1
+
+    print("Aaug:" , Aaug)
+    Baug = SX.zeros(Naug, 1)
+    Baug[-1, 0] = 1
+    print("Baug:", Baug)
+
+    x_aug = vertcat(x,u_aug)
+    print("Aaug*x+Baug*u:",  mtimes(Aaug, x_aug) + mtimes(Baug, u_in))
+
+
+    model.name = 'augmented_second_order_ode_dt'
+    model.f_expl_expr = substitute(model.f_expl_expr, u, u_aug[0])
+
+    ode = Function('ode', [x, u_aug[0]], [model.f_expl_expr])
+    # set up RK4
+    k1 = ode(x, u_aug[0])
+    k2 = ode(x+dT/2*k1, u_aug[0])
+    k3 = ode(x+dT/2*k2, u_aug[0])
+    k4 = ode(x+dT*k3, u_aug[0])
+    xrk4 = x + dT/6 * (k1 + 2*k2 + 2*k3 + k4)
+
+    print("ode: ", ode)
+    print("rk4: ", xrk4)
+    xf = vertcat(xrk4, mtimes(Aaug, x_aug) + mtimes(Baug, u_in))
     model.disc_dyn_expr = xf
+    model.x = x_aug
+    model.u = u_in
+
     print("built RK4 model with dT = ", dT)
     print(xf)
     return model
