@@ -84,14 +84,15 @@ def export_so_ode_ct():
 
     return model
 
-def export_so_ode_dt_rk4(dT):
-    inputDelay = 0.553
+def export_so_ode_dt_rk4(dT, inputDelay):
 
     model = export_so_ode_ct()
     model.name = model_name = 'second_order_ode_dt_rk4'
 
     x = model.x
     u = model.u
+    p = model.p #Original parametes
+
     u_in = SX.sym('u_in')
 
     Nx = x.size()[0]
@@ -113,9 +114,13 @@ def export_so_ode_dt_rk4(dT):
     x_aug = vertcat(x,u_aug)
     print("Aaug*x+Baug*u:",  mtimes(Aaug, x_aug) + mtimes(Baug, u_in))
 
+# TODO:To support time varying input delays further augment the system with
+#     B_DelaySens * u_aug  [ (1xNaug)X(Naugx1) ]
 
+    B_delay = SX.sym('Bu_sens', Naug) #Sensitivity of each different delay wrt dynamics
     model.name = 'augmented_second_order_ode_dt'
-    model.f_expl_expr = substitute(model.f_expl_expr, u, u_aug[0])
+    #model.f_expl_expr = substitute(model.f_expl_expr, u, u_aug[0])
+    model.f_expl_expr = substitute(model.f_expl_expr, u, mtimes(transpose(B_delay), u_aug))  # mtimes(BDelaySens,u_aug)
 
     ode = Function('ode', [x, u_aug[0]], [model.f_expl_expr])
     # set up RK4
@@ -131,6 +136,9 @@ def export_so_ode_dt_rk4(dT):
     model.disc_dyn_expr = xf
     model.x = x_aug
     model.u = u_in
+    model.p = vertcat(p,B_delay)
+
+    print(model.p)
 
     print("built RK4 model with dT = ", dT)
     print(xf)

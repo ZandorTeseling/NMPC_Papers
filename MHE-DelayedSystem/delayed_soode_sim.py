@@ -39,25 +39,25 @@ import numpy as nmp
 import matplotlib.pyplot as plt
 
 dt = 0.05
-Tf = 5.0
+Tf = 10.0
 N = int(Tf/dt)
 
 sim_ct = AcadosSim()
 sim_dt = AcadosSim()
 # export model
 model_ct = export_so_ode_ct()
-zeta = 0.7 #Critically Damped
-ts   = 0.3 #Time Constant
+zeta = 0.5 #Under Damped
+ts   = 0.125 #Time Constant
 Kp   = 1.0 #Steady State Gain
 
-
-model_dt = export_so_ode_dt_rk4(dt)
+inputDelay = 0.553
+model_dt = export_so_ode_dt_rk4(dt, inputDelay)
 
 sim_ct.model = model_ct
 sim_dt.model = model_dt
 
 sim_ct.parameter_values = np.array([zeta, ts, Kp])
-sim_dt.parameter_values = np.array([zeta, ts, Kp])
+sim_dt.parameter_values = np.array([zeta, ts, Kp, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 # set simulation time
 sim_ct.solver_options.T = dt
 sim_dt.solver_options.T = dt
@@ -72,19 +72,17 @@ sim_dt.solver_options.integrator_type = 'DISCRETE'
 acados_integrator_ct = AcadosSimSolver(sim_ct) #Used to mock data for testing mhe
 acados_integrator_dt = AcadosSimSolver(sim_dt) #Used to mock data for testing mhe
 
-
 nx = model_ct.x.size()[0]
 nx_dt = model_dt.x.size()[0]
 nu = model_ct.u.size()[0]
 u0 = nmp.zeros(nu)
-
-
 
 #Storage structs
 simX = nmp.zeros((N+1, nx))
 simXdisc = nmp.zeros((N+1, nx_dt))
 simU = nmp.zeros((N, nu))
 simY = nmp.zeros((N+1, 1))
+simYdisc = nmp.zeros((N+1, 1))
 
 #inital state/parameters
 x0 = nmp.zeros(nx)
@@ -97,17 +95,21 @@ simX[0, :] = x0
 simXdisc[0, :] = x0disc
 v_stds = [0.05]
 
-simU[round(0.8/dt):, 0] = 1
+simU[round(0.8/dt): round(3.8/dt), 0] =  1
+simU[round(5.8/dt): round(7.8/dt), 0] = -1
 
 for i in range(N):
     # set initial state
     u0 = simU[i, :]
     p = nmp.array([zeta, ts, Kp])
+
+    # Pick which control input actuates the body, allows for varying time delay.
+    p_dt = nmp.array([zeta, ts, Kp, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
     acados_integrator_ct.set("p", p)
     acados_integrator_ct.set("x", x0)
     acados_integrator_ct.set("u", u0)
 
-    acados_integrator_dt.set("p", p)
+    acados_integrator_dt.set("p", p_dt)
     acados_integrator_dt.set("x", x0disc)
     acados_integrator_dt.set("u", u0)
 
@@ -128,21 +130,18 @@ for i in range(N):
     simX[i + 1, :]     = x0
 
     simY[i+1, :] = x0[0] + nmp.transpose(nmp.diag(v_stds) @ nmp.random.standard_normal((1, 1)))
-
-
-
-
-
+    simYdisc[i + 1, :] = x0disc[0] + nmp.transpose(nmp.diag(v_stds) @ nmp.random.standard_normal((1, 1)))
 
 plt.figure(1)
 plt.plot(np.linspace(0, Tf, N+1), simX[:, 0], label="true no delay")
 plt.step(np.linspace(0, Tf, N+1), simXdisc[:, 0], label="true disc delayed")
 plt.plot(np.linspace(0, Tf, N), simU[:, 0], label="input")
-plt.plot(np.linspace(0, Tf, N+1), simY[:, 0], 'x', label="measured")
+plt.plot(np.linspace(0, Tf, N+1), simY[:, 0], 'x', label="measured ")
+plt.plot(np.linspace(0, Tf, N+1), simYdisc[:, 0], '.', label="measured disc")
 
 plt.ylabel("[-]")
 plt.xlabel("time [s]")
-plt.title("SO ODE Dynamic Model")
+plt.title("SO+DeadTime ODE Dynamic Model with InputDelay: " + str(inputDelay) + " tS: " + str(ts) + " Kp: " + str(Kp) + " Zeta: " + str(zeta))
 plt.grid()
 plt.legend(loc="upper left")
 plt.show(block = False)
